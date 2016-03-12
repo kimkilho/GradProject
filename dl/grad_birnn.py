@@ -35,7 +35,8 @@ TEST_DATA_PATH = os.path.join(DATA_DIR,
                                "integrated_data_%s_I%d_%s_test.dat" %
                                (TAG, INPUT_DIM, LABEL_NAME))
 
-VALIDATION_SIZE = 1000
+VALIDATION_SIZE = 128
+TEST_SIZE = 128   # FIXME
 # TRAIN_SET_RATIO = 7
 # VALID_SET_RATIO = 1
 #
@@ -265,7 +266,7 @@ with tf.Session() as s:
   test_xs = np.transpose(test_data, (0, 2, 1))
   # batch_xs: 3D array: [num_instances, image_width, image_height]
   test_ys = test_labels
-  test_size = 1000
+  test_size = TEST_SIZE
   test_ys = test_ys[:test_size, :]
 
   test_feed_dict = {x: test_xs, y: test_ys,
