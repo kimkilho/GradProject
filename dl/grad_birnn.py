@@ -35,11 +35,12 @@ TEST_DATA_PATH = os.path.join(DATA_DIR,
                                "integrated_data_%s_I%d_%s_test.dat" %
                                (TAG, INPUT_DIM, LABEL_NAME))
 
-TRAIN_SET_RATIO = 7
-VALID_SET_RATIO = 1
-
-VALIDATION_DATA_RATIO = float(VALID_SET_RATIO) / \
-                        (TRAIN_SET_RATIO + VALID_SET_RATIO)
+VALIDATION_SIZE = 1000
+# TRAIN_SET_RATIO = 7
+# VALID_SET_RATIO = 1
+#
+# VALIDATION_DATA_RATIO = float(VALID_SET_RATIO) / \
+#                         (TRAIN_SET_RATIO + VALID_SET_RATIO)
 
 FEATURE_IDXS = []
 for s in TAG:   # investigate TAG, character by character
@@ -173,7 +174,8 @@ with tf.Session() as s:
                  IMAGE_HEIGHT, IMAGE_WIDTH,
                  NUM_INPUT_CHANNELS)
 
-  valid_size = int(len(train_labels) * VALIDATION_DATA_RATIO)
+  # valid_size = int(len(train_labels) * VALIDATION_DATA_RATIO)
+  valid_size = VALIDATION_SIZE
   valid_data = train_data[:valid_size, :, :, :]
   valid_labels = train_labels[:valid_size]
 
@@ -263,12 +265,12 @@ with tf.Session() as s:
   test_xs = np.transpose(test_data, (0, 2, 1))
   # batch_xs: 3D array: [num_instances, image_width, image_height]
   test_ys = test_labels
-  test_len = 1000
-  test_ys = test_ys[:test_len, :]
+  test_size = 1000
+  test_ys = test_ys[:test_size, :]
 
   test_feed_dict = {x: test_xs, y: test_ys,
-                    istate_fw: np.zeros((test_len, 2*n_hidden)),
-                    istate_bw: np.zeros((test_len, 2*n_hidden))}
+                    istate_fw: np.zeros((test_size, 2*n_hidden)),
+                    istate_bw: np.zeros((test_size, 2*n_hidden))}
   print "Testing Accuracy: ", s.run(accuracy, feed_dict=test_feed_dict)
 
 
