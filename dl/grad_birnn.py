@@ -4,6 +4,8 @@ from tensorflow.models.rnn import rnn, rnn_cell
 import numpy as np
 
 import os
+import sys
+import time
 from util.preprocess_data import TRAIN_SET_RATIO, VALID_SET_RATIO, \
                                  FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
 
@@ -19,10 +21,10 @@ NUM_INPUT_CHANNELS = 1
 NUM_CLASSES = 2
 
 LEARNING_RATE = 0.001
-TRAINING_ITERS = 10000
+NUM_EPOCHS = 10
 BATCH_SIZE = 128
 NUM_HIDDENS = 128
-DISPLAY_STEP = 10
+DISPLAY_STEP = 100
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "..", "data")
@@ -154,9 +156,11 @@ init = tf.initialize_all_variables()
 
 # Launch the graph
 with tf.Session() as s:
+  start_time = time.time()
   s.run(init)
   batch_size = BATCH_SIZE
   display_step = DISPLAY_STEP
+  num_epochs = NUM_EPOCHS
   step = 0
 
   train_data, train_profile_ids, train_labels = \
@@ -171,11 +175,12 @@ with tf.Session() as s:
   train_xs = np.transpose(train_data, (0, 2, 1))
   # batch_xs: 3D array: [num_instances, image_width, image_height]
   train_ys = train_labels
+  train_size = len(train_ys)
 
   # Keep training until reach max iterations
-  while step * batch_size < TRAINING_ITERS:
+  for step in xrange(num_epochs * train_size // batch_size):
     # Compute the offset of the current minibatch in the data.
-    offset = step * batch_size
+    offset = (step * batch_size) % (train_size - batch_size)
     batch_xs = train_xs[offset:(offset+batch_size), :, :]
     batch_ys = train_ys[offset:(offset+batch_size)]
 
@@ -184,6 +189,9 @@ with tf.Session() as s:
                  istate_bw: np.zeros((batch_size, 2*n_hidden))}
     # Fit training using batch data
     s.run(optimizer, feed_dict=feed_dict)
+
+    curr_epoch_in_float = float(step) * batch_size / train_size
+
     if step % display_step == 0:
       # Calculate batch accuracy
       acc = s.run(accuracy, feed_dict=feed_dict)
@@ -193,8 +201,10 @@ with tf.Session() as s:
       print "Iter " + str(step*batch_size) + \
             ", Minibatch Loss= " + "{:.6f}".format(loss) + \
             ", Training Accuracy= " + "{:.5f}".format(acc)
-    step += 1
+
+  duration = time.time() - start_time
   print "Optimization Finished!"
+  print >> sys.stderr, ("The session ran for %.2fm" % (duration / 60.))
 
   # Calculate accuracy for test data
 
@@ -210,7 +220,8 @@ with tf.Session() as s:
   test_xs = np.transpose(test_data, (0, 2, 1))
   # batch_xs: 3D array: [num_instances, image_width, image_height]
   test_ys = test_labels
-  test_len = len(test_labels)
+  test_len = 1000
+  test_ys = test_ys[:1000, :]
 
   feed_dict = {x: test_xs, y: test_ys,
                istate_fw: np.zeros((test_len, 2*n_hidden)),
