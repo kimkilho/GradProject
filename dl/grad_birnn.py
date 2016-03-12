@@ -6,8 +6,7 @@ import numpy as np
 import os
 import sys
 import time
-from util.preprocess_data import TRAIN_SET_RATIO, VALID_SET_RATIO, \
-                                 FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
+from util.preprocess_data import FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
 
 
 # FIXME: Parameters
@@ -35,6 +34,9 @@ TRAIN_DATA_PATH = os.path.join(DATA_DIR,
 TEST_DATA_PATH = os.path.join(DATA_DIR,
                                "integrated_data_%s_I%d_%s_test.dat" %
                                (TAG, INPUT_DIM, LABEL_NAME))
+
+TRAIN_SET_RATIO = 7
+VALID_SET_RATIO = 1
 
 VALIDATION_DATA_RATIO = float(VALID_SET_RATIO) / \
                         (TRAIN_SET_RATIO + VALID_SET_RATIO)
