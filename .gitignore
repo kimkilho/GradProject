@@ -129,3 +129,5 @@ ENV/
 
 # Spyder project settings
 .spyderproject
+
+data/
