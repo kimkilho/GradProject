@@ -198,9 +198,9 @@ with tf.Session() as s:
       # Calculate batch loss
       loss = s.run(cost, feed_dict=feed_dict)
 
-      print "Iter " + str(step*batch_size) + \
-            ", Minibatch Loss= " + "{:.6f}".format(loss) + \
-            ", Training Accuracy= " + "{:.5f}".format(acc)
+      print("@ Epoch %.2f" % curr_epoch_in_float)
+      print("Minibatch loss: %.6f" % loss)
+      print("Minibatch error: %.5f" % (1.0 - acc))
 
   duration = time.time() - start_time
   print "Optimization Finished!"
