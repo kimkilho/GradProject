@@ -564,7 +564,8 @@ if __name__ == "__main__":
   INPUT_OVERLAP = INPUT_DIM / 2  # default=0
   SHUFFLE = True  # FIXME
   RANDOM_SEQUENCE_FILE_PATH =\
-    os.path.join(BASE_DIR, "random_sequence_%s.csv" % "20160313")  # FIXME
+    os.path.join(BASE_DIR, "random_sequence_%s_%s.csv" %
+                           (TAG, "20160313"))  # FIXME
 
   """ Filtering and normalizing of instances with missing values """
   FILTERED_DATA_DIR = os.path.join(DATA_DIR, "filtered_%s" % FILTER_TAG)
