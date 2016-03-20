@@ -660,7 +660,7 @@ if __name__ == "__main__":
 
     """ Dimension and overlap for a single instance for DL """
     INPUT_OVERLAP = INPUT_DIM/2  # default=0
-    SHUFFLE = False # FIXME
+    SHUFFLE = True  # FIXME
     RANDOM_SEQUENCE_FILE_PATH = \
         os.path.join(BASE_DIR, "random_sequence_%s_%s.csv" %
                                (TAG, "20160207"))  # FIXME
