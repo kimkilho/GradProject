@@ -61,7 +61,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from example import reader
+from src.example import reader
 
 flags = tf.flags
 logging = tf.logging
@@ -246,7 +246,7 @@ def run_epoch(session, m, data, eval_op, verbose=False):
   costs = 0.0
   iters = 0
   state = m.initial_state.eval()
-  for step, (x, y) in enumerate(reader.ptb_iterator(data, m.batch_size,
+  for step, (x, y) in enumerate(reader.ptb_iterator(data,m.batch_size,
                                                     m.num_steps)):
     cost, state, _ = session.run([m.cost, m.final_state, eval_op],
                                  {m.input_data: x,

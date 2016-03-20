@@ -1,19 +1,20 @@
-import tensorflow as tf
-from tensorflow.python.ops.constant_op import constant
-from tensorflow.models.rnn import rnn, rnn_cell
-import numpy as np
-
 import os
 import sys
 import time
+
+import numpy as np
+import tensorflow as tf
+from tensorflow.models.rnn import rnn, rnn_cell
+from tensorflow.python.ops.constant_op import constant
+
 # from util.preprocess_data import FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
-# from util.preprocess_audio_data import FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
-from util.preprocess_magneticfieldsensor_data import FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
+from src.util.preprocess_audio_data import FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
+# from util.preprocess_magneticfieldsensor_data import FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
 
 
 # FIXME: Parameters
-TAG = "M"   # FIXME
-INPUT_DIM = 16  # FIXME
+TAG = "a"   # FIXME
+INPUT_DIM = 8  # FIXME
 LABEL_NAME = "accompanying"  # FIXME
 
 IMAGE_HEIGHT = 1
