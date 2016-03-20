@@ -7,10 +7,10 @@ from sklearn import preprocessing
 import argparse
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "..", "data")
-DATA_DIR = os.path.join(BASE_DIR, "AMGOLPA")
-VALID_TAGS = "AMGOLPa"
-VALID_LABELS = {"sleeping", "having_a_meal"}
+                        "..", "..", "data")
+DATA_DIR = os.path.join(BASE_DIR, "AMGOLPAR", "fillna")     # FIXME
+VALID_TAGS = "AMGOLPaR"
+VALID_LABELS = {"accompanying", "conversing"}
 VALID_NORMALIZE_OPTIONS = {"each", "all"}
 # DEFAULT_AGGREGATED_DATA_DIR = os.path.join(DEFAULT_RAW_DATA_DIR, "aggregated")
 
@@ -25,12 +25,17 @@ TEST_SET_RATIO = 2
 LIMIT_TEST_NUM_INSTANCES = 10000
 
 """ Original data file indices """
-# [profile_id[0], time_stamp[1], expId[2], accX[3], accY[4], accZ[5],
+# [profile_id[0], timestamp[1], expId[2], accX[3], accY[4], accZ[5],
 #  magnX[6], magnY[7], magnZ[8], gyroX[9], gyroY[10], gyroZ[11],
 #  roll[12], pitch[13], azimuth[14], lux[15], distance[16],
 #  l1Norm[17], l2Norm[18], linfNorm[19],
-#  accompanying[20], conversing[21], drinking[22], having_a_meal[23],
-#  in_class[24], sleeping[25], studying[26]]
+#  mfcc1[20], mfcc2[21], mfcc3[22], mfcc4[23],
+#  mfcc5[24], mfcc6[25], mfcc7[26], mfcc8[27],
+#  mfcc9[28], mfcc10[29], mfcc11[30], mfcc12[31],
+#  psd1[32], psd2[33], psd3[34], psd4[35],
+#  cosThetaOver2[36], xSinThetaOver2[37], ySinThetaOver2[38], zSinThetaOver2[39],
+#  accompanying[40], conversing[41], drinking[42], having_a_meal[43],
+#  in_class[44], sleeping[45]]
 PROFILE_ID_IDX = 0
 TIMESTAMP_IDX = 1
 FEATURE_IDXS_DICT = {
@@ -40,7 +45,8 @@ FEATURE_IDXS_DICT = {
     "O": (12, 15),
     "L": (15, 16),
     "P": (16, 17),
-    "a": (17, 20)
+    "a": (17, 36),
+    "R": (36, 40)
 }    # (inclusive, exclusive)
 FEATURE_NAMES_DICT = {
     "A": ("accX", "accY", "accZ",),
@@ -49,8 +55,15 @@ FEATURE_NAMES_DICT = {
     "O": ("roll", "pitch", "azimuth",),
     "L": ("lux",),
     "P": ("distance",),
-    "a": ("l1Norm", "l2Norm", "linfNorm",)
+    "a": ("l1Norm", "l2Norm", "linfNorm",
+          "mfcc1", "mfcc2", "mfcc3", "mfcc4",
+          "mfcc5", "mfcc6", "mfcc7", "mfcc8",
+          "mfcc9", "mfcc10", "mfcc11", "mfcc12",
+          "psd1", "psd2", "psd3", "psd4",),
+    "R": ("cosThetaOver2", "xSinThetaOver2",
+          "ySinThetaOver2", "zSinThetaOver2",)
 }
+LABEL_IDXS_DICT = {"accompanying": 40, "conversing": 41}
 
 
 def parse_args():
@@ -96,7 +109,7 @@ def parse_args():
     if args.input_dim:
       input_dim = int(args.input_dim)
     else:
-      input_dim = 64  # FIXME
+      input_dim = 64
 
     if args.normalize:
         if args.normalize in VALID_NORMALIZE_OPTIONS:
@@ -631,8 +644,7 @@ if __name__ == "__main__":
             NUM_FEATURES -= FEATURE_IDXS[i]
         else:
             NUM_FEATURES += FEATURE_IDXS[i]
-    LABEL_DICT = {"sleeping": 25, "having_a_meal": 23}
-    LABEL_IDX = LABEL_DICT[LABEL_NAME]
+    LABEL_IDX = LABEL_IDXS_DICT[LABEL_NAME]
 
     """ Integrated data file indices """
     # [profile_id, timestamp, accX(64), accY(64), accZ(64),
@@ -647,8 +659,8 @@ if __name__ == "__main__":
     # AGGREGATION_FREQUENCY = 50
 
     """ Dimension and overlap for a single instance for DL """
-    INPUT_OVERLAP = 32  # default=0
-    SHUFFLE = True  # FIXME
+    INPUT_OVERLAP = INPUT_DIM/2  # default=0
+    SHUFFLE = False # FIXME
     RANDOM_SEQUENCE_FILE_PATH = \
         os.path.join(BASE_DIR, "random_sequence_%s_%s.csv" %
                                (TAG, "20160207"))  # FIXME
