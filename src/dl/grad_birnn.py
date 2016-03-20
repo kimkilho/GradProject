@@ -7,14 +7,12 @@ import tensorflow as tf
 from tensorflow.models.rnn import rnn, rnn_cell
 from tensorflow.python.ops.constant_op import constant
 
-# from util.preprocess_data import FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
-from src.util.preprocess_audio_data import FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
-# from util.preprocess_magneticfieldsensor_data import FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
+from util.preprocess_data import FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
 
 
 # FIXME: Parameters
-TAG = "a"   # FIXME
-INPUT_DIM = 8  # FIXME
+TAG = "Ma"   # FIXME
+INPUT_DIM = 64  # FIXME
 LABEL_NAME = "accompanying"  # FIXME
 
 IMAGE_HEIGHT = 1
@@ -25,12 +23,12 @@ NUM_CLASSES = 2
 LEARNING_RATE = 0.001
 NUM_EPOCHS = 20
 BATCH_SIZE = 128
-NUM_HIDDENS = 128
+NUM_HIDDENS = 64
 DISPLAY_STEP = 50
 VALIDATION_FREQUENCY = 150
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "..", "data")
+                        "..", "..", "data")
 TRAIN_DATA_PATH = os.path.join(DATA_DIR,
                                "integrated_data_%s_I%d_%s_train.dat" %
                                (TAG, INPUT_DIM, LABEL_NAME))
@@ -59,8 +57,8 @@ for i in range(len(FEATURE_IDXS)):
 
 # Network parameters
 batch_size = BATCH_SIZE
-n_input = IMAGE_HEIGHT	  # Sensor data input (shape: 1*64)
-n_steps = INPUT_DIM*NUM_FEATURES  # timesteps
+n_input = NUM_FEATURES	  # Sensor data input (final width: num_features)
+n_steps = INPUT_DIM       # timesteps  (final height: INPUT_DIM)
 n_hidden = NUM_HIDDENS  # number of features in hidden layers
 n_classes = NUM_CLASSES   # Behavior total classes (not doing, doing)
 
@@ -118,21 +116,12 @@ train_size = len(train_labels)
 
 train_data_shape = train_data.shape
 valid_data_shape = valid_data.shape
-# train_data: 4D array: [num_instances, image_height,
-#                       [num_features*image_width, num_input_channels]
+# train_data: 4D array: [num_instances, 1, num_features*image_width, 1]
 # Reshape and transpose data to get 28 sequences
-train_data = train_data.reshape(
-  (train_data_shape[0], train_data_shape[1], train_data_shape[2])
-)
-valid_data = valid_data.reshape(
-  (valid_data_shape[0], valid_data_shape[1], valid_data_shape[2])
-)
 
-
-train_data = np.transpose(train_data, (0, 2, 1))
-# batch_xs: 3D array: [num_instances, image_width, image_height]
-
-valid_data = np.transpose(valid_data, (0, 2, 1))
+# IMPORTANT: data transformation
+train_data = train_data.reshape((-1, n_steps, n_input), order='F')
+valid_data = valid_data.reshape((-1, n_steps, n_input), order='F')
 
 # tf Graph input
 train_x = tf.placeholder(tf.float32, shape=(batch_size, n_steps, n_input))
@@ -157,37 +146,38 @@ biases = {
   "out": tf.Variable(tf.random_normal([n_classes]))
 }
 
-def BiRNN(_X, _istate_fw, _istate_bw, _weights, _biases, _batch_size, _seq_len):
 
-  # BiRNN requires to supply sequence_length as [batch_size, int64]
-  # Note: Tensorflow 0.6.0 requires BiRNN sequence_length parameter to be set
-  # For a better implementation with latest version of tensorflow, check below
-  _seq_len = tf.fill([_batch_size], constant(_seq_len, dtype=tf.int64))
+def BiRNN(_X, _istate_fw, _istate_bw,
+          _weights, _biases, _batch_size, _seq_len):
+    # BiRNN requires to supply sequence_length as [batch_size, int64]
+    # Note: Tensorflow 0.6.0 requires BiRNN sequence_length parameter to be set
+    # For a better implementation with latest version of tensorflow, check below
+    _seq_len = tf.fill([_batch_size], constant(_seq_len, dtype=tf.int64))
 
-  # input shape: (batch_size, n_steps, n_input)
-  _X = tf.transpose(_X, [1, 0, 2])  # permute n_steps and batch_size
-  # Reshape to prepare input to hidden activation
-  _X = tf.reshape(_X, [-1, n_input]) # (n_steps*batch_size, n_input)
-  # Linear activation
-  _X = tf.matmul(_X, _weights['hidden']) + _biases['hidden']
+    # input shape: (batch_size, n_steps, n_input)
+    _X = tf.transpose(_X, [1, 0, 2])  # permute n_steps and batch_size
+    # Reshape to prepare input to hidden activation
+    _X = tf.reshape(_X, [-1, n_input]) # (n_steps*batch_size, n_input)
+    # Linear activation
+    _X = tf.matmul(_X, _weights['hidden']) + _biases['hidden']
 
-  # Define lstm cells with tensorflow
-  # Forward direction cell
-  lstm_fw_cell = rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0)
-  # Backward direction cell
-  lstm_bw_cell = rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0)
-  # Split data because rnn cell needs a list of inputs for the RNN inner loop
-  _X = tf.split(0, n_steps, _X) # n_steps * (batch_size, n_hidden)
+    # Define lstm cells with tensorflow
+    # Forward direction cell
+    lstm_fw_cell = rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0)
+    # Backward direction cell
+    lstm_bw_cell = rnn_cell.BasicLSTMCell(n_hidden, forget_bias=1.0)
+    # Split data because rnn cell needs a list of inputs for the RNN inner loop
+    _X = tf.split(0, n_steps, _X) # n_steps * (batch_size, n_hidden)
 
-  # Get lstm cell output
-  outputs = rnn.bidirectional_rnn(lstm_fw_cell, lstm_bw_cell, _X,
-                                  initial_state_fw=_istate_fw,
-                                  initial_state_bw=_istate_bw,
-                                  sequence_length=_seq_len)
+    # Get lstm cell output
+    outputs = rnn.bidirectional_rnn(lstm_fw_cell, lstm_bw_cell, _X,
+                                    initial_state_fw=_istate_fw,
+                                    initial_state_bw=_istate_bw,
+                                    sequence_length=_seq_len)
 
-  # Linear activation
-  # Get inner loop last output
-  return tf.matmul(outputs[-1], _weights['out']) + _biases['out']
+    # Linear activation
+    # Get inner loop last output
+    return tf.matmul(outputs[-1], _weights['out']) + _biases['out']
 
 with tf.variable_scope("model", reuse=None):
   train_pred = BiRNN(train_x, train_istate_fw, train_istate_bw,
