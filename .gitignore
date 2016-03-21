@@ -132,3 +132,7 @@ ENV/
 .spyderproject
 
 data/
+
+# Shell program related files
+*.sh
+*.out
