@@ -493,6 +493,13 @@ def integrate_to_file(raw_data_dir, integrated_file_path,
                         continue
 
                     label_inst = str(int(float(line_list[label_idx])))
+                    # FIXME: Pass labels 0, convert labels 1 to be 0
+                    #        and regard labels over 1 to be 1 (not alone)
+                    if label_idx == LABEL_IDXS_DICT["accompanying"] or \
+                       label_idx == LABEL_IDXS_DICT["conversing"]:
+                      if   label_inst == '0': continue
+                      elif label_inst == '1': label_inst = '0'
+                      else:                   label_inst = '1'
                     profile_id_instances.append(profile_id_inst)
                     timestamp_instances.append(timestamp_inst)
                     feature_instances.append(feature_inst)
