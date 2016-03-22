@@ -194,7 +194,7 @@ class BLSTM(object):
 
         # FIXME: Define loss and optimizer
         optimizer = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(loss)
+            learning_rate=learning_rate).minimize(loss, global_step=batch)
 
         train_prediction = tf.nn.softmax(logits)
         with tf.variable_scope("model_valid", reuse=None):
