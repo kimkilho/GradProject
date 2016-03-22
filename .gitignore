@@ -7,6 +7,7 @@
 .idea/dictionaries
 .idea/vcs.xml
 .idea/jsLibraryMappings.xml
+.idea/codeStyleSettings.xml
 
 # Sensitive or high-churn files:
 .idea/dataSources.ids
@@ -131,7 +132,9 @@ ENV/
 # Spyder project settings
 .spyderproject
 
+# Data and model directories
 data/
+model/
 
 # Shell program related files
 *.sh
