@@ -1,5 +1,3 @@
-__author__ = 'kilho'
-
 import os.path
 from os import listdir, makedirs
 import numpy as np
@@ -19,8 +17,8 @@ SEP_CHAR = ','
 LINE_BREAK_CHAR = '\n'
 
 """ Training/Validation/Test data set ratio """
-TRAIN_SET_RATIO = 6
-VALID_SET_RATIO = 2
+TRAIN_SET_RATIO = 7
+VALID_SET_RATIO = 1
 TEST_SET_RATIO = 2
 LIMIT_TEST_NUM_INSTANCES = 10000
 
