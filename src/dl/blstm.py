@@ -294,6 +294,8 @@ class BLSTM(object):
         trained_model_save_dir = self.train_ckpt_dir
 
         with tf.Session() as s:
+            tf.initialize_all_variables().run()
+
             # Create a saver.
             variables_to_be_restored_list = []
             for layer_name in self.layers_dict:
