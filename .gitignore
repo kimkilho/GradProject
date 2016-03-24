@@ -139,3 +139,6 @@ model/
 # Shell program related files
 *.sh
 *.out
+
+# Swap files
+*.swp
