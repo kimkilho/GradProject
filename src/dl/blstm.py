@@ -36,6 +36,9 @@ def confusion_matrix(predictions, labels):
 class BLSTM(object):
     def __init__(self, tag, num_classes, label_name,
                  input_layer_size,
+                 conv1_filter_size,
+                 conv2_filter_size,
+                 conv3_filter_size,
                  num_hiddens,
                  forget_bias,
                  stddev, seed,
@@ -47,6 +50,15 @@ class BLSTM(object):
         :param input_layer_size: 1D list[int]:
                                  (num_timesteps, num_features, input_num_channels)
                                  = (input_height, input_width, input_num_channels)
+        :param conv1_filter_size: 1D list[int]:
+                                 (filter_height, filter_width,
+                                  input_num_channels, conv1_num_channels)
+        :param conv2_filter_size: 1D list[int]:
+                                 (filter_height, filter_width,
+                                  conv1_num_channels, conv2_num_channels)
+        :param conv3_filter_size: 1D list[int]:
+                                 (filter_height, filter_width,
+                                  conv2_num_channels, conv3_num_channels)
         :param num_hiddens: int
         :param forget_bias: float
         :param stddev: float
@@ -64,6 +76,9 @@ class BLSTM(object):
         self.num_classes = num_classes
         self.label_name = label_name
         self.input_layer_size = input_layer_size
+        self.conv1_filter_size = conv1_filter_size
+        self.conv2_filter_size = conv2_filter_size
+        self.conv3_filter_size = conv3_filter_size
         self.num_hiddens = num_hiddens
         self.forget_bias = forget_bias
         self.stddev = stddev
@@ -75,12 +90,43 @@ class BLSTM(object):
     def initialize(self):
         num_features = self.input_layer_size[1]
 
-        self.layers_dict = {}   # {layer_name: [weight, bias]}
+        self.conv_layers_dict = {}  # {layer_name: [weight, bias]}
+        for conv_layer_name, conv_filter_size \
+            in zip(["conv1", "conv2", "conv3"],
+                   [self.conv1_filter_size, self.conv2_filter_size,
+                    self.conv3_filter_size]):
+            weight = tf.Variable(
+                tf.random_normal(conv_filter_size,
+                                 stddev=self.stddev, seed=self.seed),
+                name="%s_weight" % conv_layer_name
+            )
+            bias = tf.Variable(
+                tf.zeros([conv_filter_size[3]]),
+                name="%s_bias" % conv_layer_name
+            )
+            self.conv_layers_dict[conv_layer_name] = [weight, bias]
+        #
+        # conv1_output_height = \
+        #     self.input_layer_size[0] - self.conv1_filter_size[0] + 1  # Stride always be 1
+        # conv2_output_height = \
+        #     conv1_output_height - self.conv2_filter_size[0] + 1
+        # conv3_output_height = \
+        #     conv2_output_height - self.conv3_filter_size[0] + 1
+        # rnn1_num_inputs = self.conv3_filter_size[3]
 
-        hidden_weight_shape = [num_features, 2*self.num_hiddens]
-        out_weight_shape = [2*self.num_hiddens, self.num_classes]
+        # input_layer_size: 1D list[int]:
+        # (num_timesteps, num_features, input_num_channels)
+        # = (input_height, input_width, input_num_channels)
+        # conv1_filter_size: 1D list[int]:
+        # (filter_height, filter_width,
+        #  input_num_channels, conv1_num_channels)
+
+        self.rnn_layers_dict = {}   # {layer_name: [weight, bias]}
+        rnn1_weight_shape = [num_features, 2*self.num_hiddens]
+        rnn2_weight_shape = [2*self.num_hiddens, self.num_classes]
+        # rnn_weight_shape: 3D Tensor: [num_channels,
         for layer_name, weight_shape \
-            in zip(["hidden", "out"],
+            in zip(["rnn1", "rnn2"],
                    [hidden_weight_shape, out_weight_shape]):
 
             weight = tf.Variable(
@@ -130,7 +176,9 @@ class BLSTM(object):
                                               forget_bias=self.forget_bias)
         # Split data because RNN Cell needs a list of inputs for the RNN inner loop
         rnn_input_list = tf.split(0, num_timesteps, actives_dict["hidden"])
-        # rnn_input_list[0]: A 2D Tensor: (batch_size, 2*num_hiddens)
+        # rnn_input_list: list[Tensor]
+        # rnn_input_list[0]: A 2D Tensor: [batch_size, 2*num_hiddens]
+        print("rnn_input_list[0].get_shape()", rnn_input_list[0].get_shape())
 
         # Get LSTM cell output
         rnn_output_list = \
@@ -138,6 +186,9 @@ class BLSTM(object):
                                   initial_state_fw=istate_fw,
                                   initial_state_bw=istate_bw,
                                   sequence_length=_seq_len)
+        # rnn_output_list: list[Tensor]
+        # rnn_output_list[0]: A 2D Tensor: [batch_size, 2*num_hiddens]
+
         # Linear activation
         # Get inner loop last output
         out_weight, out_bias = self.layers_dict["out"]
