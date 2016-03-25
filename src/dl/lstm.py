@@ -129,6 +129,15 @@ class BLSTM(object):
         #     )
         #     self.layers_dict[layer_name] = [weight, bias]
 
+        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(self.num_hiddens,
+                                                 forget_bias=self.forget_bias)
+        # Dense1 layer
+        self.dense1_stacked_lstm = \
+            tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * self.num_lstm_cells)
+        # Dense2 layer
+        self.dense2_stacked_lstm = \
+            tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * self.num_lstm_cells)
+
         self.dense_layers_dict = {}     # {layer_name: [weight, bias]}
         softmax_weight_shape = [self.num_hiddens, self.num_classes]
         for dense_layer_name, weight_shape \
@@ -187,38 +196,33 @@ class BLSTM(object):
                                   [curr_num_instances, curr_num_timesteps, -1])
         # dense1_input: 3D Tensor: [curr_num_instances, curr_num_timesteps,
         #                           num_features*conv3_num_channels]
+        print("dense1_input.get_shape()", dense1_input.get_shape())
 
-        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(self.num_hiddens,
-                                                 forget_bias=self.forget_bias)
-
-        # Dense1 layer
-        dense1_stacked_lstm = \
-            tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * self.num_lstm_cells)
         dense1_outputs = []
-        state = dense1_stacked_lstm.zero_state(curr_num_instances, tf.float32)
+        state = self.dense1_stacked_lstm.zero_state(curr_num_instances, tf.float32)
         with tf.variable_scope("Dense1"):
             for timestep in range(curr_num_timesteps):
+                if timestep > 0: tf.get_variable_scope().reuse_variables()
                 # The value of state is updated after processing each batch
                 output, state = \
-                    dense1_stacked_lstm(dense1_input[:, timestep, :], state)
-                # output: 3D Tensor: [curr_num_instances, 1,
-                #                     num_features*conv3_num_channels]
+                    self.dense1_stacked_lstm(dense1_input[:, timestep, :], state)
+                output = tf.reshape(output, [curr_num_instances, 1, -1])
+                # output: 3D Tensor: [curr_num_instances, 1, num_hiddens]
                 dense1_outputs.append(output)
+        print("dense1_outputs[0].get_shape()", dense1_outputs[0].get_shape())
         dense2_input = tf.concat(1, dense1_outputs)
 
-        # Dense2 layer
-        dense2_stacked_lstm = \
-            tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * self.num_lstm_cells)
         dense2_outputs = []
-        state = dense2_stacked_lstm.zero_state(curr_num_instances, tf.float32)
+        state = self.dense2_stacked_lstm.zero_state(curr_num_instances, tf.float32)
         with tf.variable_scope("Dense2"):
             for timestep in range(curr_num_timesteps):
+                if timestep > 0: tf.get_variable_scope().reuse_variables()
                 # The value of state is updated after processing each batch
                 output, state = \
-                    dense2_stacked_lstm(dense2_input[:, timestep, :], state)
-                # output: 3D Tensor: [curr_num_instances, 1,
-                #                     num_features*conv3_num_channels]
+                    self.dense2_stacked_lstm(dense2_input[:, timestep, :], state)
+                # output: 2D Tensor: [curr_num_instances, num_hiddens]
                 dense2_outputs.append(output)
+        print("dense2_outputs[0].get_shape()", dense2_outputs[0].get_shape())
 
         # Softmax layer
         softmax_input = dense2_outputs[-1]
@@ -266,7 +270,7 @@ class BLSTM(object):
             staircase=True)
 
         # FIXME: Define loss and optimizer
-        optimizer = tf.train.AdamOptimizer(
+        optimizer = tf.train.GradientDescentOptimizer(
             learning_rate=learning_rate).minimize(loss, global_step=batch)
 
         train_prediction = tf.nn.softmax(logits)
