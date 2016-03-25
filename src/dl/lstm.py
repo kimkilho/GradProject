@@ -39,6 +39,7 @@ class BLSTM(object):
                  conv1_filter_size,
                  conv2_filter_size,
                  conv3_filter_size,
+                 num_lstm_cells,
                  num_hiddens,
                  forget_bias,
                  stddev, seed,
@@ -59,6 +60,7 @@ class BLSTM(object):
         :param conv3_filter_size: 1D list[int]:
                                  (filter_height, filter_width,
                                   conv2_num_channels, conv3_num_channels)
+        :param num_lstm_cells: int
         :param num_hiddens: int
         :param forget_bias: float
         :param stddev: float
@@ -79,6 +81,7 @@ class BLSTM(object):
         self.conv1_filter_size = conv1_filter_size
         self.conv2_filter_size = conv2_filter_size
         self.conv3_filter_size = conv3_filter_size
+        self.num_lstm_cells = num_lstm_cells
         self.num_hiddens = num_hiddens
         self.forget_bias = forget_bias
         self.stddev = stddev
@@ -90,6 +93,7 @@ class BLSTM(object):
     def initialize(self):
         num_features = self.input_layer_size[1]
 
+        # Convolutional layers
         self.conv_layers_dict = {}  # {layer_name: [weight, bias]}
         for conv_layer_name, conv_filter_size \
             in zip(["conv1", "conv2", "conv3"],
@@ -106,95 +110,122 @@ class BLSTM(object):
             )
             self.conv_layers_dict[conv_layer_name] = [weight, bias]
         #
-        # conv1_output_height = \
-        #     self.input_layer_size[0] - self.conv1_filter_size[0] + 1  # Stride always be 1
-        # conv2_output_height = \
-        #     conv1_output_height - self.conv2_filter_size[0] + 1
-        # conv3_output_height = \
-        #     conv2_output_height - self.conv3_filter_size[0] + 1
-        # rnn1_num_inputs = self.conv3_filter_size[3]
+        # self.rnn_layers_dict = {}   # {layer_name: [weight, bias]}
+        # rnn1_weight_shape = [num_features, 2*self.num_hiddens]
+        # rnn2_weight_shape = [2*self.num_hiddens, self.num_classes]
+        # # rnn_weight_shape: 3D Tensor: [num_channels,
+        # for dense_layer_name, weight_shape \
+        #     in zip(["dense1", "dense2"],
+        #            [hidden_weight_shape, out_weight_shape]):
+        #
+        #     weight = tf.Variable(
+        #         tf.random_normal(weight_shape,
+        #                          stddev=self.stddev, seed=self.seed),
+        #         name="%s_weight" % layer_name
+        #     )
+        #     bias = tf.Variable(
+        #         tf.zeros([weight_shape[1]]),
+        #         name="%s_bias" % layer_name
+        #     )
+        #     self.layers_dict[layer_name] = [weight, bias]
 
-        # input_layer_size: 1D list[int]:
-        # (num_timesteps, num_features, input_num_channels)
-        # = (input_height, input_width, input_num_channels)
-        # conv1_filter_size: 1D list[int]:
-        # (filter_height, filter_width,
-        #  input_num_channels, conv1_num_channels)
-
-        self.rnn_layers_dict = {}   # {layer_name: [weight, bias]}
-        rnn1_weight_shape = [num_features, 2*self.num_hiddens]
-        rnn2_weight_shape = [2*self.num_hiddens, self.num_classes]
-        # rnn_weight_shape: 3D Tensor: [num_channels,
-        for layer_name, weight_shape \
-            in zip(["rnn1", "rnn2"],
-                   [hidden_weight_shape, out_weight_shape]):
-
+        self.dense_layers_dict = {}     # {layer_name: [weight, bias]}
+        softmax_weight_shape = [self.num_hiddens, self.num_classes]
+        for dense_layer_name, weight_shape \
+            in zip(["softmax"],
+                   [softmax_weight_shape]):
+            # Softmax layer
             weight = tf.Variable(
-                tf.random_normal(weight_shape,
+                tf.random_normal([self.num_hiddens, self.num_classes],
                                  stddev=self.stddev, seed=self.seed),
-                name="%s_weight" % layer_name
+                name="%s_weight" % dense_layer_name
             )
             bias = tf.Variable(
-                tf.zeros([weight_shape[1]]),
-                name="%s_bias" % layer_name
+                tf.zeros([self.num_classes]),
+                name="%s_bias" % dense_layer_name
             )
-            self.layers_dict[layer_name] = [weight, bias]
+            self.dense_layers_dict[dense_layer_name] = [weight, bias]
 
-    def model(self, data, istate_fw, istate_bw):
+    def model(self, data):
         """ The Model definition. """
-        # data: A 4D tensor [num_instances, num_timesteps(image_height),
+        # data: 4D Tensor [num_instances, num_timesteps(image_height),
         #                    num_features(image_width), input_num_channels]
         num_timesteps = self.input_layer_size[0]
         num_features = self.input_layer_size[1]
 
-        # TODO: Add convolutional layers
         data_shape = data.get_shape().as_list()
-        data = tf.reshape(data, [data_shape[0], data_shape[1], data_shape[2]])
-        # data: A 3D tensor [num_instances, num_timesteps(image_height),
-        #                    num_features(image_width)]
 
-        _seq_len = tf.fill([data_shape[0]],
-                           constant(num_timesteps, dtype=tf.int64))
+        # Convolutional layer activations
+        conv_actives_dict = {}  # {layer_name: Tensor}
+        conv_actives_dict["input"] = data
+        for prev_layer_name, conv_layer_name, nonlinear_layer_name \
+            in zip(["input", "nonlinear1", "nonlinear2"],
+                   ["conv1", "conv2", "conv3"],
+                   ["nonlinear1", "nonlinear2", "nonlinear3"]):
+            prev_active = conv_actives_dict[prev_layer_name]
+            weight, bias = self.conv_layers_dict[conv_layer_name]
 
-        # data: A 3D Tensor: (batch_size, num_timesteps, num_features)
-        data = tf.transpose(data, [1, 0, 2])    # permute num_timesteps and batch_size
-        # Reshape to prepare input to hidden activation
-        data = tf.reshape(data, [-1, num_features]) # (num_timesteps*batch_size, num_features)
+            conv_active = tf.nn.bias_add(
+                tf.nn.conv2d(
+                    prev_active, weight,
+                    [1, 1, 1, 1],
+                    padding="VALID"
+                ), bias
+            )
 
-        actives_dict = {}   # {layer_name: tf.Tensor}
-        # Linear activation
-        hidden_weight, hidden_bias = self.layers_dict["hidden"]
-        actives_dict["hidden"] = \
-            tf.nn.bias_add(tf.matmul(data, hidden_weight), hidden_bias)
-        # actives_dict["hidden"]: A 2D Tensor: (num_timesteps*batch_size, 2*num_hiddens)
+            conv_actives_dict[conv_layer_name] = conv_active
 
-        # Define LSTM cells with TensorFlow
-        # Forward direction cell
-        lstm_fw_cell = rnn_cell.BasicLSTMCell(self.num_hiddens,
-                                              forget_bias=self.forget_bias)
-        lstm_bw_cell = rnn_cell.BasicLSTMCell(self.num_hiddens,
-                                              forget_bias=self.forget_bias)
-        # Split data because RNN Cell needs a list of inputs for the RNN inner loop
-        rnn_input_list = tf.split(0, num_timesteps, actives_dict["hidden"])
-        # rnn_input_list: list[Tensor]
-        # rnn_input_list[0]: A 2D Tensor: [batch_size, 2*num_hiddens]
-        print("rnn_input_list[0].get_shape()", rnn_input_list[0].get_shape())
+            nonlinear_active = tf.nn.relu(conv_active)
+            conv_actives_dict[nonlinear_layer_name] = nonlinear_active
 
-        # Get LSTM cell output
-        rnn_output_list = \
-            rnn.bidirectional_rnn(lstm_fw_cell, lstm_bw_cell, rnn_input_list,
-                                  initial_state_fw=istate_fw,
-                                  initial_state_bw=istate_bw,
-                                  sequence_length=_seq_len)
-        # rnn_output_list: list[Tensor]
-        # rnn_output_list[0]: A 2D Tensor: [batch_size, 2*num_hiddens]
+        dense1_input = conv_actives_dict["nonlinear3"]
+        curr_num_instances, curr_num_timesteps, _, _ = \
+            dense1_input.get_shape().as_list()
+        # dense1_input: 4D Tensor: [num_instances, num_timesteps-a,
+        #                           num_features, conv3_num_channels]
+        dense1_input = tf.reshape(dense1_input,
+                                  [curr_num_instances, curr_num_timesteps, -1])
+        # dense1_input: 3D Tensor: [curr_num_instances, curr_num_timesteps,
+        #                           num_features*conv3_num_channels]
 
-        # Linear activation
-        # Get inner loop last output
-        out_weight, out_bias = self.layers_dict["out"]
-        # FIXME:
-        return tf.nn.bias_add(tf.matmul(rnn_output_list[-1], out_weight),
-                              out_bias)
+        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(self.num_hiddens,
+                                                 forget_bias=self.forget_bias)
+
+        # Dense1 layer
+        dense1_stacked_lstm = \
+            tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * self.num_lstm_cells)
+        dense1_outputs = []
+        state = dense1_stacked_lstm.zero_state(curr_num_instances, tf.float32)
+        with tf.variable_scope("Dense1"):
+            for timestep in range(curr_num_timesteps):
+                # The value of state is updated after processing each batch
+                output, state = \
+                    dense1_stacked_lstm(dense1_input[:, timestep, :], state)
+                # output: 3D Tensor: [curr_num_instances, 1,
+                #                     num_features*conv3_num_channels]
+                dense1_outputs.append(output)
+        dense2_input = tf.concat(1, dense1_outputs)
+
+        # Dense2 layer
+        dense2_stacked_lstm = \
+            tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * self.num_lstm_cells)
+        dense2_outputs = []
+        state = dense2_stacked_lstm.zero_state(curr_num_instances, tf.float32)
+        with tf.variable_scope("Dense2"):
+            for timestep in range(curr_num_timesteps):
+                # The value of state is updated after processing each batch
+                output, state = \
+                    dense2_stacked_lstm(dense2_input[:, timestep, :], state)
+                # output: 3D Tensor: [curr_num_instances, 1,
+                #                     num_features*conv3_num_channels]
+                dense2_outputs.append(output)
+
+        # Softmax layer
+        softmax_input = dense2_outputs[-1]
+        softmax_weight, softmax_bias = self.dense_layers_dict["softmax"]
+
+        return tf.nn.bias_add(tf.matmul(softmax_input, softmax_weight),
+                              softmax_bias)
 
     def train(self, base_learning_rate,
               batch_size, num_epochs,
@@ -218,17 +249,8 @@ class BLSTM(object):
 
         valid_data_node = tf.constant(valid_data)
 
-        # FIXME:
-        train_istate_fw = \
-            tf.zeros([batch_size, 2*self.num_hiddens], dtype=tf.float32)
-        train_istate_bw = \
-            tf.zeros([batch_size, 2*self.num_hiddens], dtype=tf.float32)
-        valid_istate_fw = \
-            tf.zeros([valid_size, 2*self.num_hiddens], dtype=tf.float32)
-        valid_istate_bw = \
-            tf.zeros([valid_size, 2*self.num_hiddens], dtype=tf.float32)
         with tf.variable_scope("model_train", reuse=None):
-            logits = self.model(train_data_node, train_istate_fw, train_istate_bw)
+            logits = self.model(train_data_node)
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
             logits, train_labels_node))
 
@@ -248,9 +270,8 @@ class BLSTM(object):
             learning_rate=learning_rate).minimize(loss, global_step=batch)
 
         train_prediction = tf.nn.softmax(logits)
-        with tf.variable_scope("model_valid", reuse=None):
-            valid_prediction = tf.nn.softmax(
-                self.model(valid_data_node, valid_istate_fw, valid_istate_bw))
+        with tf.variable_scope("model_valid", reuse=True):
+            valid_prediction = tf.nn.softmax(self.model(valid_data_node))
 
         valid_frequency = min(train_size, patience)   # check every epoch
         best_valid_error = np.inf
@@ -339,8 +360,7 @@ class BLSTM(object):
             tf.zeros([test_size, 2*self.num_hiddens], dtype=tf.float32)
 
         with tf.variable_scope("model_test", reuse=None):
-            test_prediction = tf.nn.softmax(
-                self.model(test_data_node, test_istate_fw, test_istate_bw))
+            test_prediction = tf.nn.softmax(self.model(test_data_node))
 
         trained_model_save_dir = self.train_ckpt_dir
 

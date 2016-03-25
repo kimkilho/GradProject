@@ -2,7 +2,7 @@ import tensorflow as tf
 import os
 import numpy as np
 
-from blstm import BLSTM
+from lstm import BLSTM
 from util.preprocess_data import TRAIN_SET_RATIO, VALID_SET_RATIO, \
     FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
 
@@ -24,6 +24,37 @@ tf.app.flags.DEFINE_integer(
     "The number of input channels "
     "(default: 1).")
 
+tf.app.flags.DEFINE_integer(
+    "conv1_filter_height", 5,
+    "Filter height for convolutional layer 1 "
+    "(cf. (NUM_TIMESTEPS-FILTER_HEIGHT)+1 = CONV_NUM_TIMESTEPS, default: 5)")
+tf.app.flags.DEFINE_integer(
+    "conv1_num_channels", 3,
+    "The number of channels in convolutional layer 1 "
+    "(default: 3)")
+
+tf.app.flags.DEFINE_integer(
+    "conv2_filter_height", 5,
+    "Filter height for convolutional layer 2 "
+    "(cf. (NUM_TIMESTEPS-FILTER_HEIGHT)+1 = CONV_NUM_TIMESTEPS, default: 5)")
+tf.app.flags.DEFINE_integer(
+    "conv2_num_channels", 3,
+    "The number of channels in convolutional layer 2 "
+    "(default: 3)")
+
+tf.app.flags.DEFINE_integer(
+    "conv3_filter_height", 5,
+    "Filter height for convolutional layer 3 "
+    "(cf. (NUM_TIMESTEPS-FILTER_HEIGHT)+1 = CONV_NUM_TIMESTEPS, default: 5)")
+tf.app.flags.DEFINE_integer(
+    "conv3_num_channels", 3,
+    "The number of channels in convolutional layer 3 "
+    "(default: 3)")
+
+tf.app.flags.DEFINE_integer(
+    "num_lstm_cells", 64,
+    "The number of LSTM cells in dense layers "
+    "(default: 64).")
 tf.app.flags.DEFINE_integer(
     "num_hiddens", 64,
     "The number of hidden units in LSTM cell "
@@ -62,15 +93,26 @@ def parse_args(flags):
     tag = flags.tag
     label_name = flags.label_name
     num_timesteps = flags.num_timesteps
-
     input_num_channels = flags.input_num_channels
+
+    conv1_filter_height = flags.conv1_filter_height
+    conv1_num_channels = flags.conv1_num_channels
+    conv2_filter_height = flags.conv2_filter_height
+    conv2_num_channels = flags.conv2_num_channels
+    conv3_filter_height = flags.conv3_filter_height
+    conv3_num_channels = flags.conv3_num_channels
+
+    num_lstm_cells = flags.num_lstm_cells
     num_hiddens = flags.num_hiddens
     forget_bias = flags.forget_bias
 
     learning_rate = flags.learning_rate
 
-    return tag, label_name, num_timesteps, \
-           input_num_channels, num_hiddens, forget_bias, \
+    return tag, label_name, num_timesteps, input_num_channels, \
+           conv1_filter_height, conv1_num_channels, \
+           conv2_filter_height, conv2_num_channels, \
+           conv3_filter_height, conv3_num_channels, \
+           num_lstm_cells, num_hiddens, forget_bias, \
            learning_rate
 
 
@@ -117,10 +159,15 @@ def extract_data(filename, num_features, num_classes,
 
 
 def main(argv=None):
-    TAG, LABEL_NAME, NUM_TIMESTEPS, \
-    INPUT_NUM_CHANNELS, NUM_HIDDENS, FORGET_BIAS, \
+    TAG, LABEL_NAME, NUM_TIMESTEPS, INPUT_NUM_CHANNELS, \
+    CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS, \
+    CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS, \
+    CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS, \
+    NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS, \
     LEARNING_RATE = \
         parse_args(FLAGS)
+
+    CONV1_FILTER_WIDTH = CONV2_FILTER_WIDTH = CONV3_FILTER_WIDTH = 1
 
     FEATURE_IDXS = []
     for s in TAG:   # investigate TAG, character by character
@@ -135,16 +182,23 @@ def main(argv=None):
 
     print "TAG, LABEL_NAME"
     print TAG, LABEL_NAME
-    print "NUM_TIMESTEPS, NUM_FEATURES (input_height, input_width)"
-    print NUM_TIMESTEPS, NUM_FEATURES
-    print "INPUT_NUM_CHANNELS, NUM_HIDDENS, FORGET_BIAS"
-    print INPUT_NUM_CHANNELS, NUM_HIDDENS, FORGET_BIAS
+    print "NUM_TIMESTEPS, NUM_FEATURES (input_height, input_width), INPUT_NUM_CHANNELS"
+    print NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS
+    print "CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS"
+    print CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS
+    print "CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS"
+    print CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS
+    print "CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS"
+    print CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS
+    print "NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS"
+    print NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS
     print "LEARNING_RATE"
     print LEARNING_RATE
 
-    TRAIN_DATA_PATH = os.path.join(DATA_DIR,
-                                   "integrated_data_%s_I%d_%s_train.dat" %
-                                   (TAG, NUM_TIMESTEPS, LABEL_NAME))
+    # TRAIN_DATA_PATH = os.path.join(DATA_DIR,
+    #                                "integrated_data_%s_I%d_%s_train.dat" %
+    #                                (TAG, NUM_TIMESTEPS, LABEL_NAME))
+    TRAIN_DATA_PATH = os.path.join(DATA_DIR, "sample.dat")
 
     TRAIN_CKPT_DIR = \
         os.path.join(MODEL_DIR,
@@ -174,6 +228,13 @@ def main(argv=None):
     print("Training...")
     blstm = BLSTM(TAG, NUM_CLASSES, LABEL_NAME,
                   [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
+                  [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
+                   INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
+                  [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
+                   CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
+                  [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
+                   CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
+                  NUM_LSTM_CELLS,
                   NUM_HIDDENS,
                   FORGET_BIAS,
                   STDDEV, SEED,

@@ -2,7 +2,7 @@ import tensorflow as tf
 import os
 import numpy as np
 
-from blstm import BLSTM
+from lstm import BLSTM
 from util.preprocess_data import FEATURE_IDXS_DICT
 from train import extract_data, parse_args, NUM_CLASSES, STDDEV, SEED
 
@@ -15,10 +15,15 @@ MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 
 def main(argv=None):
-    TAG, LABEL_NAME, NUM_TIMESTEPS, \
-    INPUT_NUM_CHANNELS, NUM_HIDDENS, FORGET_BIAS, \
+    TAG, LABEL_NAME, NUM_TIMESTEPS, INPUT_NUM_CHANNELS, \
+    CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS, \
+    CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS, \
+    CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS, \
+    NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS, \
     LEARNING_RATE = \
         parse_args(FLAGS)
+
+    CONV1_FILTER_WIDTH = CONV2_FILTER_WIDTH = CONV3_FILTER_WIDTH = 1
 
     FEATURE_IDXS = []
     for s in TAG:   # investigate TAG, character by character
@@ -33,10 +38,16 @@ def main(argv=None):
 
     print "TAG, LABEL_NAME"
     print TAG, LABEL_NAME
-    print "NUM_TIMESTEPS, NUM_FEATURES (input_height, input_width)"
-    print NUM_TIMESTEPS, NUM_FEATURES
-    print "INPUT_NUM_CHANNELS, NUM_HIDDENS, FORGET_BIAS"
-    print INPUT_NUM_CHANNELS, NUM_HIDDENS, FORGET_BIAS
+    print "NUM_TIMESTEPS, NUM_FEATURES (input_height, input_width), INPUT_NUM_CHANNELS"
+    print NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS
+    print "CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS"
+    print CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS
+    print "CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS"
+    print CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS
+    print "CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS"
+    print CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS
+    print "NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS"
+    print NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS
     print "LEARNING_RATE"
     print LEARNING_RATE
 
@@ -66,6 +77,13 @@ def main(argv=None):
     print("Testing the model...")
     blstm = BLSTM(TAG, NUM_CLASSES, LABEL_NAME,
                   [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
+                  [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
+                   INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
+                  [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
+                   CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
+                  [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
+                   CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
+                  NUM_LSTM_CELLS,
                   NUM_HIDDENS,
                   FORGET_BIAS,
                   STDDEV, SEED,
