@@ -16,6 +16,15 @@ tf.app.flags.DEFINE_string(
     "The name of label to be classified "
     "('accompanying' or 'conversing', default: accompanying).")
 tf.app.flags.DEFINE_integer(
+    "num_epochs", 300,
+    "The number of epochs "
+    "(default: 300)")
+tf.app.flags.DEFINE_integer(
+    "batch_size", 128,
+    "The batch size for training "
+    "(default: 128)")
+
+tf.app.flags.DEFINE_integer(
     "num_timesteps", 64,
     "The number of timesteps for input layer "
     "(default: 64).")
@@ -80,8 +89,6 @@ NUM_CLASSES = 2
 STDDEV = 0.1
 
 # Learning algorithm parameters
-NUM_EPOCHS = 300
-BATCH_SIZE = 128
 VALIDATION_DATA_RATIO = float(VALID_SET_RATIO) / (TRAIN_SET_RATIO + VALID_SET_RATIO)
 PATIENCE = 1000
 SEED = None
@@ -92,6 +99,9 @@ LEARNING_RATE_DECAY_FACTOR = 0.99
 def parse_args(flags):
     tag = flags.tag
     label_name = flags.label_name
+    num_epochs = flags.num_epochs
+    batch_size = flags.batch_size
+
     num_timesteps = flags.num_timesteps
     input_num_channels = flags.input_num_channels
 
@@ -108,7 +118,8 @@ def parse_args(flags):
 
     learning_rate = flags.learning_rate
 
-    return tag, label_name, num_timesteps, input_num_channels, \
+    return tag, label_name, num_epochs, batch_size, \
+           num_timesteps, input_num_channels, \
            conv1_filter_height, conv1_num_channels, \
            conv2_filter_height, conv2_num_channels, \
            conv3_filter_height, conv3_num_channels, \
@@ -159,7 +170,8 @@ def extract_data(filename, num_features, num_classes,
 
 
 def main(argv=None):
-    TAG, LABEL_NAME, NUM_TIMESTEPS, INPUT_NUM_CHANNELS, \
+    TAG, LABEL_NAME, NUM_EPOCHS, BATCH_SIZE, \
+    NUM_TIMESTEPS, INPUT_NUM_CHANNELS, \
     CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS, \
     CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS, \
     CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS, \
@@ -180,8 +192,8 @@ def main(argv=None):
         else:
             NUM_FEATURES += FEATURE_IDXS[i]
 
-    print "TAG, LABEL_NAME"
-    print TAG, LABEL_NAME
+    print "TAG, LABEL_NAME, NUM_EPOCHS, BATCH_SIZE"
+    print TAG, LABEL_NAME, NUM_EPOCHS, BATCH_SIZE
     print "NUM_TIMESTEPS, NUM_FEATURES (input_height, input_width), INPUT_NUM_CHANNELS"
     print NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS
     print "CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS"

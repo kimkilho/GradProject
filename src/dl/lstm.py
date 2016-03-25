@@ -365,10 +365,6 @@ class BLSTM(object):
 
         test_size = test_labels.shape[0]
         test_data_node = tf.constant(test_data)
-        test_istate_fw = \
-            tf.zeros([test_size, 2*self.num_hiddens], dtype=tf.float32)
-        test_istate_bw = \
-            tf.zeros([test_size, 2*self.num_hiddens], dtype=tf.float32)
 
         with tf.variable_scope("model", reuse=True):
             test_prediction = tf.nn.softmax(self.model(test_data_node))
