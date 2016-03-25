@@ -253,7 +253,7 @@ class BLSTM(object):
 
         valid_data_node = tf.constant(valid_data)
 
-        with tf.variable_scope("model_train", reuse=None):
+        with tf.variable_scope("model", reuse=None):
             logits = self.model(train_data_node)
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
             logits, train_labels_node))
@@ -274,7 +274,7 @@ class BLSTM(object):
             learning_rate=learning_rate).minimize(loss, global_step=batch)
 
         train_prediction = tf.nn.softmax(logits)
-        with tf.variable_scope("model_valid", reuse=True):
+        with tf.variable_scope("model", reuse=True):
             valid_prediction = tf.nn.softmax(self.model(valid_data_node))
 
         valid_frequency = min(train_size, patience)   # check every epoch
@@ -286,11 +286,18 @@ class BLSTM(object):
         with tf.Session() as s:
             start_time = time.time()
             # Create a saver.
-            variables_to_be_saved_list = []
-            for layer_name in self.layers_dict:
-                weight, bias = self.layers_dict[layer_name]
-                variables_to_be_saved_list.append(weight)
-                variables_to_be_saved_list.append(bias)
+            print [var.name for var in tf.trainable_variables()]
+            # FIXME: Add LSTM related weights and biases
+            variables_to_be_saved_list = tf.trainable_variables()
+            # variables_to_be_saved_list = []
+            # for layer_name in self.conv_layers_dict:
+            #     weight, bias = self.conv_layers_dict[layer_name]
+            #     variables_to_be_saved_list.append(weight)
+            #     variables_to_be_saved_list.append(bias)
+            # for layer_name in self.dense_layers_dict:
+            #     weight, bias = self.dense_layers_dict[layer_name]
+            #     variables_to_be_saved_list.append(weight)
+            #     variables_to_be_saved_list.append(bias)
 
             saver = tf.train.Saver(variables_to_be_saved_list)
 
@@ -363,7 +370,7 @@ class BLSTM(object):
         test_istate_bw = \
             tf.zeros([test_size, 2*self.num_hiddens], dtype=tf.float32)
 
-        with tf.variable_scope("model_test", reuse=None):
+        with tf.variable_scope("model", reuse=True):
             test_prediction = tf.nn.softmax(self.model(test_data_node))
 
         trained_model_save_dir = self.train_ckpt_dir
@@ -372,11 +379,16 @@ class BLSTM(object):
             tf.initialize_all_variables().run()
 
             # Create a saver.
-            variables_to_be_restored_list = []
-            for layer_name in self.layers_dict:
-                weight, bias = self.layers_dict[layer_name]
-                variables_to_be_restored_list.append(weight)
-                variables_to_be_restored_list.append(bias)
+            variables_to_be_restored_list = tf.trainable_variables()
+            # variables_to_be_restored_list = []
+            # for layer_name in self.conv_layers_dict:
+            #     weight, bias = self.conv_layers_dict[layer_name]
+            #     variables_to_be_restored_list.append(weight)
+            #     variables_to_be_restored_list.append(bias)
+            # for layer_name in self.dense_layers_dict:
+            #     weight, bias = self.dense_layers_dict[layer_name]
+            #     variables_to_be_restored_list.append(weight)
+            #     variables_to_be_restored_list.append(bias)
             saver = tf.train.Saver(variables_to_be_restored_list)
 
             ckpt = tf.train.get_checkpoint_state(trained_model_save_dir)
