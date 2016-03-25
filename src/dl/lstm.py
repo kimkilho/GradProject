@@ -196,7 +196,7 @@ class BLSTM(object):
                                   [curr_num_instances, curr_num_timesteps, -1])
         # dense1_input: 3D Tensor: [curr_num_instances, curr_num_timesteps,
         #                           num_features*conv3_num_channels]
-        print("dense1_input.get_shape()", dense1_input.get_shape())
+        # print("dense1_input.get_shape()", dense1_input.get_shape())
 
         dense1_outputs = []
         state = self.dense1_stacked_lstm.zero_state(curr_num_instances, tf.float32)
@@ -209,7 +209,7 @@ class BLSTM(object):
                 output = tf.reshape(output, [curr_num_instances, 1, -1])
                 # output: 3D Tensor: [curr_num_instances, 1, num_hiddens]
                 dense1_outputs.append(output)
-        print("dense1_outputs[0].get_shape()", dense1_outputs[0].get_shape())
+        # print("dense1_outputs[0].get_shape()", dense1_outputs[0].get_shape())
         dense2_input = tf.concat(1, dense1_outputs)
 
         dense2_outputs = []
@@ -222,7 +222,7 @@ class BLSTM(object):
                     self.dense2_stacked_lstm(dense2_input[:, timestep, :], state)
                 # output: 2D Tensor: [curr_num_instances, num_hiddens]
                 dense2_outputs.append(output)
-        print("dense2_outputs[0].get_shape()", dense2_outputs[0].get_shape())
+        # print("dense2_outputs[0].get_shape()", dense2_outputs[0].get_shape())
 
         # Softmax layer
         softmax_input = dense2_outputs[-1]

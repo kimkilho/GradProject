@@ -195,10 +195,10 @@ def main(argv=None):
     print "LEARNING_RATE"
     print LEARNING_RATE
 
-    # TRAIN_DATA_PATH = os.path.join(DATA_DIR,
-    #                                "integrated_data_%s_I%d_%s_train.dat" %
-    #                                (TAG, NUM_TIMESTEPS, LABEL_NAME))
-    TRAIN_DATA_PATH = os.path.join(DATA_DIR, "sample.dat")
+    TRAIN_DATA_PATH = os.path.join(DATA_DIR,
+                                   "integrated_data_%s_I%d_%s_train.dat" %
+                                   (TAG, NUM_TIMESTEPS, LABEL_NAME))
+    # TRAIN_DATA_PATH = os.path.join(DATA_DIR, "sample.dat")
 
     TRAIN_CKPT_DIR = \
         os.path.join(MODEL_DIR,
