@@ -142,3 +142,6 @@ model/
 
 # Swap files
 *.swp
+
+# for Mac OS
+.DS_Store
