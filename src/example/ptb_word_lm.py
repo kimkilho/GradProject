@@ -61,7 +61,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from src.example import reader
+from example import reader
 
 flags = tf.flags
 logging = tf.logging
