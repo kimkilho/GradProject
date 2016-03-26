@@ -366,7 +366,7 @@ class BLSTM(object):
         test_size = test_labels.shape[0]
         test_data_node = tf.constant(test_data)
 
-        with tf.variable_scope("model", reuse=True):
+        with tf.variable_scope("model", reuse=None):
             test_prediction = tf.nn.softmax(self.model(test_data_node))
 
         trained_model_save_dir = self.train_ckpt_dir
@@ -400,13 +400,14 @@ class BLSTM(object):
                 return
 
             # Finally print the result
-            predicted_label_symbols = np.argmax(test_prediction.eval(), 1)
+            test_pred = test_prediction.eval()
+            predicted_label_symbols = np.argmax(test_pred, 1)
             test_label_symbols = np.argmax(test_labels, 1)
             print(predicted_label_symbols.shape, test_labels.shape)
 
-            test_error = error_rate(test_prediction.eval(), test_labels)
+            test_error = error_rate(test_pred, test_labels)
             print("Final test error: %.1f%%" % test_error)
-            print(confusion_matrix(test_prediction.eval(), test_labels))
+            print(confusion_matrix(test_pred, test_labels))
 
         ops.reset_default_graph()   # NOTE: reset existing graph
 
