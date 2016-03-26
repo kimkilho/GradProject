@@ -58,14 +58,18 @@ def main(argv=None):
 
     TRAIN_CKPT_DIR = \
         os.path.join(MODEL_DIR,
-                     "train_%s_LR%.2f_NT%d_NF%d_INC%d_NH%d_%s" %
+                     "train_%s_NT%d_NF%d_INC%d_"
+                     "C1FH%d_C1NC%d_C2FH%d_C2NC%d_C3FH%d_C3NC%d_"
+                     "NLC%d_NH%d_FB%.2f_"
+                     "LR%.2f_%s" %
                      (TAG,
+                      NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS,
+                      CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS,
+                      CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS,
+                      CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS,
+                      NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS,
                       LEARNING_RATE,
-                      NUM_TIMESTEPS, NUM_FEATURES,
-                      INPUT_NUM_CHANNELS, NUM_HIDDENS,
                       LABEL_NAME))
-    if not os.path.exists(TRAIN_CKPT_DIR):
-        os.makedirs(TRAIN_CKPT_DIR)
     print("TRAIN_CKPT_DIR", TRAIN_CKPT_DIR)
 
     # Get the data.
