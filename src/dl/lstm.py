@@ -286,7 +286,8 @@ class BLSTM(object):
 
         train_prediction = tf.nn.softmax(logits)
         with tf.variable_scope("model", reuse=True):
-            valid_prediction, _, _ = tf.nn.softmax(self.model(valid_data_node))
+            valid_logits, _, _ = self.model(valid_data_node)
+            valid_prediction = tf.nn.softmax(valid_logits)
 
         valid_frequency = min(train_size, patience)   # check every epoch
         best_valid_error = np.inf
