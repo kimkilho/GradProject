@@ -155,7 +155,7 @@ class BLSTM(object):
             )
             self.dense_layers_dict[dense_layer_name] = [weight, bias]
 
-    def model(self, data):
+    def model(self, data, train=False):
         """ The Model definition. """
         # data: 4D Tensor [num_instances, num_timesteps(image_height),
         #                    num_features(image_width), input_num_channels]
@@ -187,6 +187,7 @@ class BLSTM(object):
             nonlinear_active = tf.nn.relu(conv_active)
             conv_actives_dict[nonlinear_layer_name] = nonlinear_active
 
+        dense_actives_dict = {}     # {layer_name: Tensor}
         dense1_input = conv_actives_dict["nonlinear3"]
         curr_num_instances, curr_num_timesteps, _, _ = \
             dense1_input.get_shape().as_list()
@@ -211,6 +212,9 @@ class BLSTM(object):
                 dense1_outputs.append(output)
         # print("dense1_outputs[0].get_shape()", dense1_outputs[0].get_shape())
         dense2_input = tf.concat(1, dense1_outputs)
+        # dense2_input: 2D Tensor: [curr_num_instances, curr_num_timesteps,
+        #                           num_hiddens]
+        dense_actives_dict["dense1"] = dense2_input
 
         dense2_outputs = []
         state = self.dense2_stacked_lstm.zero_state(curr_num_instances, tf.float32)
@@ -226,10 +230,17 @@ class BLSTM(object):
 
         # Softmax layer
         softmax_input = dense2_outputs[-1]
+        dense_actives_dict["dense2"] = softmax_input
         softmax_weight, softmax_bias = self.dense_layers_dict["softmax"]
 
-        return tf.nn.bias_add(tf.matmul(softmax_input, softmax_weight),
-                              softmax_bias)
+        logits = tf.nn.bias_add(tf.matmul(softmax_input, softmax_weight),
+                                softmax_bias)
+
+        # FIXME:
+        if train:
+            return logits
+        else:
+            return logits, conv_actives_dict, dense_actives_dict
 
     def train(self, base_learning_rate,
               batch_size, num_epochs,
@@ -254,7 +265,7 @@ class BLSTM(object):
         valid_data_node = tf.constant(valid_data)
 
         with tf.variable_scope("model", reuse=None):
-            logits = self.model(train_data_node)
+            logits = self.model(train_data_node, train=True)
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
             logits, train_labels_node))
 
@@ -270,12 +281,12 @@ class BLSTM(object):
             staircase=True)
 
         # FIXME: Define loss and optimizer
-        optimizer = tf.train.GradientDescentOptimizer(
+        optimizer = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(loss, global_step=batch)
 
         train_prediction = tf.nn.softmax(logits)
         with tf.variable_scope("model", reuse=True):
-            valid_prediction = tf.nn.softmax(self.model(valid_data_node))
+            valid_prediction, _, _ = tf.nn.softmax(self.model(valid_data_node))
 
         valid_frequency = min(train_size, patience)   # check every epoch
         best_valid_error = np.inf
