@@ -61,7 +61,7 @@ def main(argv=None):
                      "train_%s_NT%d_NF%d_INC%d_"
                      "C1FH%d_C1NC%d_C2FH%d_C2NC%d_C3FH%d_C3NC%d_"
                      "NLC%d_NH%d_FB%.2f_"
-                     "LR%.2f_%s" %
+                     "LR%.4f_%s" %
                      (TAG,
                       NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS,
                       CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS,
