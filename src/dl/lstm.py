@@ -379,7 +379,8 @@ class BLSTM(object):
         test_data_node = tf.constant(test_data)
 
         with tf.variable_scope("model", reuse=None):
-            test_prediction = tf.nn.softmax(self.model(test_data_node))
+            test_logits, _, _ = self.model(test_data_node)
+            test_prediction = tf.nn.softmax(test_logits)
 
         trained_model_save_dir = self.train_ckpt_dir
 
