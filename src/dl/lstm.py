@@ -39,7 +39,6 @@ class LSTM(object):
                  conv1_filter_size,
                  conv2_filter_size,
                  conv3_filter_size,
-                 num_lstm_cells,
                  num_hiddens,
                  forget_bias,
                  stddev, seed,
@@ -60,8 +59,7 @@ class LSTM(object):
         :param conv3_filter_size: 1D list[int]:
                                  (filter_height, filter_width,
                                   conv2_num_channels, conv3_num_channels)
-        :param num_lstm_cells: int
-        :param num_hiddens: int
+        :param num_hiddens: int: The number of lstm cells in each dense layer
         :param forget_bias: float
         :param stddev: float
         :param seed: int (or None)
@@ -81,7 +79,6 @@ class LSTM(object):
         self.conv1_filter_size = conv1_filter_size
         self.conv2_filter_size = conv2_filter_size
         self.conv3_filter_size = conv3_filter_size
-        self.num_lstm_cells = num_lstm_cells
         self.num_hiddens = num_hiddens
         self.forget_bias = forget_bias
         self.stddev = stddev
@@ -109,34 +106,15 @@ class LSTM(object):
                 name="%s_bias" % conv_layer_name
             )
             self.conv_layers_dict[conv_layer_name] = [weight, bias]
-        #
-        # self.rnn_layers_dict = {}   # {layer_name: [weight, bias]}
-        # rnn1_weight_shape = [num_features, 2*self.num_hiddens]
-        # rnn2_weight_shape = [2*self.num_hiddens, self.num_classes]
-        # # rnn_weight_shape: 3D Tensor: [num_channels,
-        # for dense_layer_name, weight_shape \
-        #     in zip(["dense1", "dense2"],
-        #            [hidden_weight_shape, out_weight_shape]):
-        #
-        #     weight = tf.Variable(
-        #         tf.random_normal(weight_shape,
-        #                          stddev=self.stddev, seed=self.seed),
-        #         name="%s_weight" % layer_name
-        #     )
-        #     bias = tf.Variable(
-        #         tf.zeros([weight_shape[1]]),
-        #         name="%s_bias" % layer_name
-        #     )
-        #     self.layers_dict[layer_name] = [weight, bias]
 
-        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(self.num_hiddens,
-                                                 forget_bias=self.forget_bias)
         # Dense1 layer
         self.dense1_stacked_lstm = \
-            tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * self.num_lstm_cells)
+            tf.nn.rnn_cell.BasicLSTMCell(self.num_hiddens,
+                                         forget_bias=self.forget_bias)
         # Dense2 layer
         self.dense2_stacked_lstm = \
-            tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * self.num_lstm_cells)
+            tf.nn.rnn_cell.BasicLSTMCell(self.num_hiddens,
+                                         forget_bias=self.forget_bias)
 
         self.dense_layers_dict = {}     # {layer_name: [weight, bias]}
         softmax_weight_shape = [self.num_hiddens, self.num_classes]

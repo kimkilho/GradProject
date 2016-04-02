@@ -61,10 +61,6 @@ tf.app.flags.DEFINE_integer(
     "(default: 3)")
 
 tf.app.flags.DEFINE_integer(
-    "num_lstm_cells", 64,
-    "The number of LSTM cells in dense layers "
-    "(default: 64).")
-tf.app.flags.DEFINE_integer(
     "num_hiddens", 64,
     "The number of hidden units in LSTM cell "
     "(default: 64).")
@@ -112,7 +108,6 @@ def parse_args(flags):
     conv3_filter_height = flags.conv3_filter_height
     conv3_num_channels = flags.conv3_num_channels
 
-    num_lstm_cells = flags.num_lstm_cells
     num_hiddens = flags.num_hiddens
     forget_bias = flags.forget_bias
 
@@ -123,7 +118,7 @@ def parse_args(flags):
            conv1_filter_height, conv1_num_channels, \
            conv2_filter_height, conv2_num_channels, \
            conv3_filter_height, conv3_num_channels, \
-           num_lstm_cells, num_hiddens, forget_bias, \
+           num_hiddens, forget_bias, \
            learning_rate
 
 
@@ -175,7 +170,7 @@ def main(argv=None):
     CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS, \
     CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS, \
     CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS, \
-    NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS, \
+    NUM_HIDDENS, FORGET_BIAS, \
     LEARNING_RATE = \
         parse_args(FLAGS)
 
@@ -202,8 +197,8 @@ def main(argv=None):
     print CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS
     print "CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS"
     print CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS
-    print "NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS"
-    print NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS
+    print "NUM_HIDDENS, FORGET_BIAS"
+    print NUM_HIDDENS, FORGET_BIAS
     print "LEARNING_RATE"
     print LEARNING_RATE
 
@@ -216,14 +211,14 @@ def main(argv=None):
         os.path.join(MODEL_DIR,
                      "train_%s_NT%d_NF%d_INC%d_"
                      "C1FH%d_C1NC%d_C2FH%d_C2NC%d_C3FH%d_C3NC%d_"
-                     "NLC%d_NH%d_FB%.2f_"
+                     "NH%d_FB%.2f_"
                      "LR%.4f_%s" %
                      (TAG,
                       NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS,
                       CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS,
                       CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS,
                       CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS,
-                      NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS,
+                      NUM_HIDDENS, FORGET_BIAS,
                       LEARNING_RATE,
                       LABEL_NAME))
     if not os.path.exists(TRAIN_CKPT_DIR):
@@ -252,7 +247,6 @@ def main(argv=None):
                    CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
                   [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
                    CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
-                  NUM_LSTM_CELLS,
                   NUM_HIDDENS,
                   FORGET_BIAS,
                   STDDEV, SEED,

@@ -20,7 +20,7 @@ def main(argv=None):
     CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS, \
     CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS, \
     CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS, \
-    NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS, \
+    NUM_HIDDENS, FORGET_BIAS, \
     LEARNING_RATE = \
         parse_args(FLAGS)
 
@@ -47,8 +47,8 @@ def main(argv=None):
     print CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS
     print "CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS"
     print CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS
-    print "NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS"
-    print NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS
+    print "NUM_HIDDENS, FORGET_BIAS"
+    print NUM_HIDDENS, FORGET_BIAS
     print "LEARNING_RATE"
     print LEARNING_RATE
 
@@ -60,14 +60,14 @@ def main(argv=None):
         os.path.join(MODEL_DIR,
                      "train_%s_NT%d_NF%d_INC%d_"
                      "C1FH%d_C1NC%d_C2FH%d_C2NC%d_C3FH%d_C3NC%d_"
-                     "NLC%d_NH%d_FB%.2f_"
+                     "NH%d_FB%.2f_"
                      "LR%.4f_%s" %
                      (TAG,
                       NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS,
                       CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS,
                       CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS,
                       CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS,
-                      NUM_LSTM_CELLS, NUM_HIDDENS, FORGET_BIAS,
+                      NUM_HIDDENS, FORGET_BIAS,
                       LEARNING_RATE,
                       LABEL_NAME))
     print("TRAIN_CKPT_DIR", TRAIN_CKPT_DIR)
@@ -88,7 +88,6 @@ def main(argv=None):
                    CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
                   [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
                    CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
-                  NUM_LSTM_CELLS,
                   NUM_HIDDENS,
                   FORGET_BIAS,
                   STDDEV, SEED,
