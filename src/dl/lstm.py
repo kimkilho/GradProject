@@ -33,7 +33,7 @@ def confusion_matrix(predictions, labels):
     return metrics.confusion_matrix(test_labels, predicted_labels)
 
 
-class BLSTM(object):
+class LSTM(object):
     def __init__(self, tag, num_classes, label_name,
                  input_layer_size,
                  conv1_filter_size,

@@ -2,7 +2,7 @@ import tensorflow as tf
 import os
 import numpy as np
 
-from lstm import BLSTM
+from lstm import LSTM
 from util.preprocess_data import FEATURE_IDXS_DICT
 from train import extract_data, parse_args, NUM_CLASSES, STDDEV, SEED
 
@@ -80,7 +80,7 @@ def main(argv=None):
     #                          num_features(image_width), input_num_channels]
 
     print("Testing the model...")
-    blstm = BLSTM(TAG, NUM_CLASSES, LABEL_NAME,
+    lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
                   [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
                   [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
                    INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
@@ -93,7 +93,7 @@ def main(argv=None):
                   FORGET_BIAS,
                   STDDEV, SEED,
                   TRAIN_CKPT_DIR)
-    blstm.test(test_data, test_labels)
+    lstm.test(test_data, test_labels)
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ import tensorflow as tf
 import os
 import numpy as np
 
-from lstm import BLSTM
+from lstm import LSTM
 from util.preprocess_data import TRAIN_SET_RATIO, VALID_SET_RATIO, \
     FEATURE_IDXS_DICT, FEATURE_NAMES_DICT
 
@@ -244,7 +244,7 @@ def main(argv=None):
     train_labels = train_labels[valid_size:]
 
     print("Training...")
-    blstm = BLSTM(TAG, NUM_CLASSES, LABEL_NAME,
+    lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
                   [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
                   [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
                    INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
@@ -257,7 +257,7 @@ def main(argv=None):
                   FORGET_BIAS,
                   STDDEV, SEED,
                   TRAIN_CKPT_DIR)
-    blstm.train(LEARNING_RATE,
+    lstm.train(LEARNING_RATE,
                 BATCH_SIZE, NUM_EPOCHS,
                 LEARNING_RATE_DECAY_FACTOR, PATIENCE,
                 train_data, train_labels,
