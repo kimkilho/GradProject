@@ -72,6 +72,10 @@ tf.app.flags.DEFINE_float(
 tf.app.flags.DEFINE_float(
     "learning_rate", 0.01,
     "Learning rate of SGD (default: 0.01).")
+tf.app.flags.DEFINE_float(
+    "dropout_prob", 0.5,
+    "Dropout probability of the model (default: 0.5)."
+)
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "..", "..", "data")
@@ -112,6 +116,7 @@ def parse_args(flags):
     forget_bias = flags.forget_bias
 
     learning_rate = flags.learning_rate
+    dropout_prob = flags.dropout_prob
 
     return tag, label_name, num_epochs, batch_size, \
            num_timesteps, input_num_channels, \
@@ -119,7 +124,7 @@ def parse_args(flags):
            conv2_filter_height, conv2_num_channels, \
            conv3_filter_height, conv3_num_channels, \
            num_hiddens, forget_bias, \
-           learning_rate
+           learning_rate, dropout_prob
 
 
 def extract_data(filename, num_features, num_classes,
@@ -171,7 +176,7 @@ def main(argv=None):
     CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS, \
     CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS, \
     NUM_HIDDENS, FORGET_BIAS, \
-    LEARNING_RATE = \
+    LEARNING_RATE, DROPOUT_PROB = \
         parse_args(FLAGS)
 
     CONV1_FILTER_WIDTH = CONV2_FILTER_WIDTH = CONV3_FILTER_WIDTH = 1
@@ -199,8 +204,8 @@ def main(argv=None):
     print CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS
     print "NUM_HIDDENS, FORGET_BIAS"
     print NUM_HIDDENS, FORGET_BIAS
-    print "LEARNING_RATE"
-    print LEARNING_RATE
+    print "LEARNING_RATE, DROPOUT_PROB"
+    print LEARNING_RATE, DROPOUT_PROB
 
     TRAIN_DATA_PATH = os.path.join(DATA_DIR,
                                    "integrated_data_%s_I%d_%s_train.dat" %
@@ -212,7 +217,7 @@ def main(argv=None):
                      "train_%s_NT%d_NF%d_INC%d_"
                      "C1FH%d_C1NC%d_C2FH%d_C2NC%d_C3FH%d_C3NC%d_"
                      "NH%d_FB%.2f_"
-                     "LR%.4f_%s" %
+                     "LR%.4f_DP_%.1f_%s" %
                      (TAG,
                       NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS,
                       CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS,
@@ -220,6 +225,7 @@ def main(argv=None):
                       CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS,
                       NUM_HIDDENS, FORGET_BIAS,
                       LEARNING_RATE,
+                      DROPOUT_PROB,
                       LABEL_NAME))
     if not os.path.exists(TRAIN_CKPT_DIR):
         os.makedirs(TRAIN_CKPT_DIR)
@@ -249,6 +255,7 @@ def main(argv=None):
                    CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
                   NUM_HIDDENS,
                   FORGET_BIAS,
+                  DROPOUT_PROB,
                   STDDEV, SEED,
                   TRAIN_CKPT_DIR)
     lstm.train(LEARNING_RATE,

@@ -41,6 +41,7 @@ class LSTM(object):
                  conv3_filter_size,
                  num_hiddens,
                  forget_bias,
+                 dropout_prob,
                  stddev, seed,
                  train_ckpt_dir):
         """
@@ -61,6 +62,7 @@ class LSTM(object):
                                   conv2_num_channels, conv3_num_channels)
         :param num_hiddens: int: The number of lstm cells in each dense layer
         :param forget_bias: float
+        :param dropout_prob: float
         :param stddev: float
         :param seed: int (or None)
         :param train_ckpt_dir: String
@@ -81,6 +83,7 @@ class LSTM(object):
         self.conv3_filter_size = conv3_filter_size
         self.num_hiddens = num_hiddens
         self.forget_bias = forget_bias
+        self.dropout_prob = dropout_prob
         self.stddev = stddev
         self.seed = seed
         self.train_ckpt_dir = train_ckpt_dir
@@ -167,6 +170,10 @@ class LSTM(object):
 
         dense_actives_dict = {}     # {layer_name: Tensor}
         dense1_input = conv_actives_dict["nonlinear3"]
+        # FIXME: Change dropout rule
+        if train:
+            dense1_input = tf.nn.dropout(dense1_input, 1-self.dropout_prob)
+
         curr_num_instances, curr_num_timesteps, _, _ = \
             dense1_input.get_shape().as_list()
         # dense1_input: 4D Tensor: [num_instances, num_timesteps-a,
@@ -177,14 +184,26 @@ class LSTM(object):
         #                           num_features*conv3_num_channels]
         # print("dense1_input.get_shape()", dense1_input.get_shape())
 
+        # FIXME: Change dropout rule
+        if train:
+            dense1_stacked_lstm = tf.nn.rnn_cell.DropoutWrapper(
+                self.dense1_stacked_lstm, output_keep_prob=(1-self.dropout_prob)
+            )
+            dense2_stacked_lstm = tf.nn.rnn_cell.DropoutWrapper(
+                self.dense2_stacked_lstm, output_keep_prob=(1-self.dropout_prob)
+            )
+        else:
+            dense1_stacked_lstm = self.dense1_stacked_lstm
+            dense2_stacked_lstm = self.dense2_stacked_lstm
+
         dense1_outputs = []
-        state = self.dense1_stacked_lstm.zero_state(curr_num_instances, tf.float32)
+        state = dense1_stacked_lstm.zero_state(curr_num_instances, tf.float32)
         with tf.variable_scope("Dense1"):
             for timestep in range(curr_num_timesteps):
                 if timestep > 0: tf.get_variable_scope().reuse_variables()
                 # The value of state is updated after processing each batch
                 output, state = \
-                    self.dense1_stacked_lstm(dense1_input[:, timestep, :], state)
+                    dense1_stacked_lstm(dense1_input[:, timestep, :], state)
                 output = tf.reshape(output, [curr_num_instances, 1, -1])
                 # output: 3D Tensor: [curr_num_instances, 1, num_hiddens]
                 dense1_outputs.append(output)
@@ -195,13 +214,13 @@ class LSTM(object):
         dense_actives_dict["dense1"] = dense2_input
 
         dense2_outputs = []
-        state = self.dense2_stacked_lstm.zero_state(curr_num_instances, tf.float32)
+        state = dense2_stacked_lstm.zero_state(curr_num_instances, tf.float32)
         with tf.variable_scope("Dense2"):
             for timestep in range(curr_num_timesteps):
                 if timestep > 0: tf.get_variable_scope().reuse_variables()
                 # The value of state is updated after processing each batch
                 output, state = \
-                    self.dense2_stacked_lstm(dense2_input[:, timestep, :], state)
+                    dense2_stacked_lstm(dense2_input[:, timestep, :], state)
                 # output: 2D Tensor: [curr_num_instances, num_hiddens]
                 dense2_outputs.append(output)
         # print("dense2_outputs[0].get_shape()", dense2_outputs[0].get_shape())
