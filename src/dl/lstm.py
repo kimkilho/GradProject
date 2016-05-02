@@ -171,8 +171,8 @@ class LSTM(object):
         dense_actives_dict = {}     # {layer_name: Tensor}
         dense1_input = conv_actives_dict["nonlinear3"]
         # FIXME: Change dropout rule
-        if train:
-            dense1_input = tf.nn.dropout(dense1_input, 1-self.dropout_prob)
+        # if train:
+        #     dense1_input = tf.nn.dropout(dense1_input, 1-self.dropout_prob)
 
         curr_num_instances, curr_num_timesteps, _, _ = \
             dense1_input.get_shape().as_list()
