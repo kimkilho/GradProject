@@ -1,29 +1,25 @@
 import tensorflow as tf
 import os
+import numpy as np
 
-from lstm import LSTM
+from bl.rnn_wo_cnn import RNN
 from util.preprocess_data import FEATURE_IDXS_DICT
-from train import extract_data, parse_args, NUM_CLASSES, STDDEV, SEED
+from bl.train_bl import parse_args, extract_data, NUM_CLASSES, STDDEV, SEED
 
 FLAGS = tf.app.flags.FLAGS
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "..", "..", "data")
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         "..", "..", "model")
+                         "..", "..", "model_bl")
 
 
 def main(argv=None):
     TAG, LABEL_NAME, NUM_EPOCHS, BATCH_SIZE, \
     NUM_TIMESTEPS, INPUT_NUM_CHANNELS, \
-    CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS, \
-    CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS, \
-    CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS, \
-    NUM_HIDDENS, FORGET_BIAS, \
+    NUM_HIDDENS, \
     LEARNING_RATE, DROPOUT_PROB = \
         parse_args(FLAGS)
-
-    CONV1_FILTER_WIDTH = CONV2_FILTER_WIDTH = CONV3_FILTER_WIDTH = 1
 
     FEATURE_IDXS = []
     for s in TAG:   # investigate TAG, character by character
@@ -41,13 +37,8 @@ def main(argv=None):
     print "NUM_TIMESTEPS, NUM_FEATURES (input_height, input_width), INPUT_NUM_CHANNELS"
     print NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS
     print "CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS"
-    print CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS
-    print "CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS"
-    print CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS
-    print "CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS"
-    print CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS
-    print "NUM_HIDDENS, FORGET_BIAS"
-    print NUM_HIDDENS, FORGET_BIAS
+    print "NUM_HIDDENS"
+    print NUM_HIDDENS
     print "LEARNING_RATE, DROPOUT_PROB"
     print LEARNING_RATE, DROPOUT_PROB
 
@@ -58,15 +49,11 @@ def main(argv=None):
     TRAIN_CKPT_DIR = \
         os.path.join(MODEL_DIR,
                      "train_%s_NT%d_NF%d_INC%d_"
-                     "C1FH%d_C1NC%d_C2FH%d_C2NC%d_C3FH%d_C3NC%d_"
-                     "NH%d_FB%.2f_"
+                     "NH%d_"
                      "LR%.4f_DP_%.1f_%s" %
                      (TAG,
                       NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS,
-                      CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS,
-                      CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS,
-                      CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS,
-                      NUM_HIDDENS, FORGET_BIAS,
+                      NUM_HIDDENS,
                       LEARNING_RATE,
                       DROPOUT_PROB,
                       LABEL_NAME))
@@ -75,25 +62,18 @@ def main(argv=None):
     # Get the data.
     test_data, test_profile_ids, test_labels = \
         extract_data(TEST_DATA_PATH, NUM_FEATURES, NUM_CLASSES,
-                 INPUT_NUM_CHANNELS, NUM_TIMESTEPS)
+                     INPUT_NUM_CHANNELS, NUM_TIMESTEPS)
     # test_data: A 4D tensor [num_instances, num_timesteps(image_height),
     #                         num_features(image_width), input_num_channels]
 
     print("Testing the model...")
-    lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
-                  [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
-                  [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
-                   INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
-                  [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
-                   CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
-                  [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
-                   CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
-                  NUM_HIDDENS,
-                  FORGET_BIAS,
-                  DROPOUT_PROB,
-                  STDDEV, SEED,
-                  TRAIN_CKPT_DIR)
-    lstm.test(test_data, test_labels)
+    rnn = RNN(TAG, NUM_CLASSES, LABEL_NAME,
+              [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
+              NUM_HIDDENS,
+              DROPOUT_PROB,
+              STDDEV, SEED,
+              TRAIN_CKPT_DIR)
+    rnn.test(test_data, test_labels)
 
 
 if __name__ == "__main__":

@@ -5,38 +5,14 @@ import time
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import ops
-from sklearn import metrics
+
+from dl.lstm import error_rate, confusion_matrix
 
 
-def error_rate(predictions, labels):
-    """
-    Return the error rate based on dense predictions and 1-hot labels.
-    :param predictions:
-    :param labels:
-    :return:
-    """
-    return 100 - (
-        100.0 *
-        np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) /
-        predictions.shape[0]
-    )
-
-
-def confusion_matrix(predictions, labels):
-    predicted_labels = np.argmax(predictions, 1)
-    test_labels = np.argmax(labels, 1)
-
-    return metrics.confusion_matrix(test_labels, predicted_labels)
-
-
-class LSTM(object):
+class RNN(object):
     def __init__(self, tag, num_classes, label_name,
                  input_layer_size,
-                 conv1_filter_size,
-                 conv2_filter_size,
-                 conv3_filter_size,
                  num_hiddens,
-                 forget_bias,
                  dropout_prob,
                  stddev, seed,
                  train_ckpt_dir):
@@ -47,17 +23,7 @@ class LSTM(object):
         :param input_layer_size: 1D list[int]:
                                  (num_timesteps, num_features, input_num_channels)
                                  = (input_height, input_width, input_num_channels)
-        :param conv1_filter_size: 1D list[int]:
-                                 (filter_height, filter_width,
-                                  input_num_channels, conv1_num_channels)
-        :param conv2_filter_size: 1D list[int]:
-                                 (filter_height, filter_width,
-                                  conv1_num_channels, conv2_num_channels)
-        :param conv3_filter_size: 1D list[int]:
-                                 (filter_height, filter_width,
-                                  conv2_num_channels, conv3_num_channels)
-        :param num_hiddens: int: The number of lstm cells in each dense layer
-        :param forget_bias: float
+        :param num_hiddens: int: The number of rnn cells in each dense layer
         :param dropout_prob: float
         :param stddev: float
         :param seed: int (or None)
@@ -74,11 +40,7 @@ class LSTM(object):
         self.num_classes = num_classes
         self.label_name = label_name
         self.input_layer_size = input_layer_size
-        self.conv1_filter_size = conv1_filter_size
-        self.conv2_filter_size = conv2_filter_size
-        self.conv3_filter_size = conv3_filter_size
         self.num_hiddens = num_hiddens
-        self.forget_bias = forget_bias
         self.dropout_prob = dropout_prob
         self.stddev = stddev
         self.seed = seed
@@ -89,37 +51,18 @@ class LSTM(object):
     def initialize(self):
         num_features = self.input_layer_size[1]
 
-        # Convolutional layers
-        self.conv_layers_dict = {}  # {layer_name: [weight, bias]}
-        for conv_layer_name, conv_filter_size \
-            in zip(["conv1", "conv2", "conv3"],
-                   [self.conv1_filter_size, self.conv2_filter_size,
-                    self.conv3_filter_size]):
-            weight = tf.Variable(
-                tf.random_normal(conv_filter_size,
-                                 stddev=self.stddev, seed=self.seed),
-                name="%s_weight" % conv_layer_name
-            )
-            bias = tf.Variable(
-                tf.zeros([conv_filter_size[3]]),
-                name="%s_bias" % conv_layer_name
-            )
-            self.conv_layers_dict[conv_layer_name] = [weight, bias]
-
         # Dense1 layer
-        self.dense1_stacked_lstm = \
-            tf.nn.rnn_cell.BasicLSTMCell(self.num_hiddens,
-                                         forget_bias=self.forget_bias)
+        self.dense1_stacked_rnn = \
+            tf.nn.rnn_cell.BasicRNNCell(self.num_hiddens)
         # Dense2 layer
-        self.dense2_stacked_lstm = \
-            tf.nn.rnn_cell.BasicLSTMCell(self.num_hiddens,
-                                         forget_bias=self.forget_bias)
+        self.dense2_stacked_rnn = \
+            tf.nn.rnn_cell.BasicRNNCell(self.num_hiddens)
 
         self.dense_layers_dict = {}     # {layer_name: [weight, bias]}
         softmax_weight_shape = [self.num_hiddens, self.num_classes]
         for dense_layer_name, weight_shape \
-            in zip(["softmax"],
-                   [softmax_weight_shape]):
+                in zip(["softmax"],
+                       [softmax_weight_shape]):
             # Softmax layer
             weight = tf.Variable(
                 tf.random_normal([self.num_hiddens, self.num_classes],
@@ -141,39 +84,16 @@ class LSTM(object):
 
         data_shape = data.get_shape().as_list()
 
-        # Convolutional layer activations
-        conv_actives_dict = {}  # {layer_name: Tensor}
-        conv_actives_dict["input"] = data
-        for prev_layer_name, conv_layer_name, nonlinear_layer_name \
-            in zip(["input", "nonlinear1", "nonlinear2"],
-                   ["conv1", "conv2", "conv3"],
-                   ["nonlinear1", "nonlinear2", "nonlinear3"]):
-            prev_active = conv_actives_dict[prev_layer_name]
-            weight, bias = self.conv_layers_dict[conv_layer_name]
-
-            conv_active = tf.nn.bias_add(
-                tf.nn.conv2d(
-                    prev_active, weight,
-                    [1, 1, 1, 1],
-                    padding="VALID"
-                ), bias
-            )
-
-            conv_actives_dict[conv_layer_name] = conv_active
-
-            nonlinear_active = tf.nn.relu(conv_active)
-            conv_actives_dict[nonlinear_layer_name] = nonlinear_active
-
         dense_actives_dict = {}     # {layer_name: Tensor}
-        dense1_input = conv_actives_dict["nonlinear3"]
+        dense1_input = data
         # FIXME: Change dropout rule
         # if train:
         #     dense1_input = tf.nn.dropout(dense1_input, 1-self.dropout_prob)
 
         curr_num_instances, curr_num_timesteps, _, _ = \
             dense1_input.get_shape().as_list()
-        # dense1_input: 4D Tensor: [num_instances, num_timesteps-a,
-        #                           num_features, conv3_num_channels]
+        # dense1_input: 4D Tensor: [num_instances, num_timesteps,
+        #                           num_features, input_num_channels]
         dense1_input = tf.reshape(dense1_input,
                                   [curr_num_instances, curr_num_timesteps, -1])
         # dense1_input: 3D Tensor: [curr_num_instances, curr_num_timesteps,
@@ -182,24 +102,24 @@ class LSTM(object):
 
         # FIXME: Change dropout rule
         if train:
-            dense1_stacked_lstm = tf.nn.rnn_cell.DropoutWrapper(
-                self.dense1_stacked_lstm, output_keep_prob=(1-self.dropout_prob)
+            dense1_stacked_rnn = tf.nn.rnn_cell.DropoutWrapper(
+                self.dense1_stacked_rnn, output_keep_prob=(1-self.dropout_prob)
             )
-            dense2_stacked_lstm = tf.nn.rnn_cell.DropoutWrapper(
-                self.dense2_stacked_lstm, output_keep_prob=(1-self.dropout_prob)
+            dense2_stacked_rnn = tf.nn.rnn_cell.DropoutWrapper(
+                self.dense2_stacked_rnn, output_keep_prob=(1-self.dropout_prob)
             )
         else:
-            dense1_stacked_lstm = self.dense1_stacked_lstm
-            dense2_stacked_lstm = self.dense2_stacked_lstm
+            dense1_stacked_rnn = self.dense1_stacked_rnn
+            dense2_stacked_rnn = self.dense2_stacked_rnn
 
         dense1_outputs = []
-        state = dense1_stacked_lstm.zero_state(curr_num_instances, tf.float32)
+        state = dense1_stacked_rnn.zero_state(curr_num_instances, tf.float32)
         with tf.variable_scope("Dense1"):
             for timestep in range(curr_num_timesteps):
                 if timestep > 0: tf.get_variable_scope().reuse_variables()
                 # The value of state is updated after processing each batch
                 output, state = \
-                    dense1_stacked_lstm(dense1_input[:, timestep, :], state)
+                    dense1_stacked_rnn(dense1_input[:, timestep, :], state)
                 output = tf.reshape(output, [curr_num_instances, 1, -1])
                 # output: 3D Tensor: [curr_num_instances, 1, num_hiddens]
                 dense1_outputs.append(output)
@@ -210,13 +130,13 @@ class LSTM(object):
         dense_actives_dict["dense1"] = dense2_input
 
         dense2_outputs = []
-        state = dense2_stacked_lstm.zero_state(curr_num_instances, tf.float32)
+        state = dense2_stacked_rnn.zero_state(curr_num_instances, tf.float32)
         with tf.variable_scope("Dense2"):
             for timestep in range(curr_num_timesteps):
                 if timestep > 0: tf.get_variable_scope().reuse_variables()
                 # The value of state is updated after processing each batch
                 output, state = \
-                    dense2_stacked_lstm(dense2_input[:, timestep, :], state)
+                    dense2_stacked_rnn(dense2_input[:, timestep, :], state)
                 # output: 2D Tensor: [curr_num_instances, num_hiddens]
                 dense2_outputs.append(output)
         # print("dense2_outputs[0].get_shape()", dense2_outputs[0].get_shape())
@@ -233,7 +153,7 @@ class LSTM(object):
         if train:
             return logits
         else:
-            return logits, conv_actives_dict, dense_actives_dict
+            return logits, dense_actives_dict
 
     def train(self, base_learning_rate,
               batch_size, num_epochs,
@@ -279,7 +199,7 @@ class LSTM(object):
 
         train_prediction = tf.nn.softmax(logits)
         with tf.variable_scope("model", reuse=True):
-            valid_logits, _, _ = self.model(valid_data_node)
+            valid_logits, _ = self.model(valid_data_node)
             valid_prediction = tf.nn.softmax(valid_logits)
 
         valid_frequency = min(train_size, patience)   # check every epoch
@@ -371,7 +291,7 @@ class LSTM(object):
         test_data_node = tf.constant(test_data)
 
         with tf.variable_scope("model", reuse=None):
-            test_logits, _, _ = self.model(test_data_node)
+            test_logits, _ = self.model(test_data_node)
             test_prediction = tf.nn.softmax(test_logits)
 
         trained_model_save_dir = self.train_ckpt_dir
@@ -415,4 +335,5 @@ class LSTM(object):
             print(confusion_matrix(test_pred, test_labels))
 
         ops.reset_default_graph()   # NOTE: reset existing graph
+
 
