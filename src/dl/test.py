@@ -21,7 +21,7 @@ def main(argv=None):
     CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS, \
     CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS, \
     NUM_HIDDENS, FORGET_BIAS, \
-    LEARNING_RATE = \
+    LEARNING_RATE, DROPOUT_PROB = \
         parse_args(FLAGS)
 
     CONV1_FILTER_WIDTH = CONV2_FILTER_WIDTH = CONV3_FILTER_WIDTH = 1
@@ -49,8 +49,8 @@ def main(argv=None):
     print CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS
     print "NUM_HIDDENS, FORGET_BIAS"
     print NUM_HIDDENS, FORGET_BIAS
-    print "LEARNING_RATE"
-    print LEARNING_RATE
+    print "LEARNING_RATE, DROPOUT_PROB"
+    print LEARNING_RATE, DROPOUT_PROB
 
     TEST_DATA_PATH = os.path.join(DATA_DIR,
                                   "integrated_data_%s_I%d_%s_test.dat" %
@@ -61,7 +61,7 @@ def main(argv=None):
                      "train_%s_NT%d_NF%d_INC%d_"
                      "C1FH%d_C1NC%d_C2FH%d_C2NC%d_C3FH%d_C3NC%d_"
                      "NH%d_FB%.2f_"
-                     "LR%.4f_%s" %
+                     "LR%.4f_DP_%.1f_%s" %
                      (TAG,
                       NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS,
                       CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS,
@@ -69,6 +69,7 @@ def main(argv=None):
                       CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS,
                       NUM_HIDDENS, FORGET_BIAS,
                       LEARNING_RATE,
+                      DROPOUT_PROB,
                       LABEL_NAME))
     print("TRAIN_CKPT_DIR", TRAIN_CKPT_DIR)
 
@@ -90,6 +91,7 @@ def main(argv=None):
                    CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
                   NUM_HIDDENS,
                   FORGET_BIAS,
+                  DROPOUT_PROB,
                   STDDEV, SEED,
                   TRAIN_CKPT_DIR)
     lstm.test(test_data, test_labels)
