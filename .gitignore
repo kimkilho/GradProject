@@ -135,6 +135,7 @@ ENV/
 # Data and model directories
 data/
 model/
+model_bl/
 
 # Shell program related files
 *.sh
