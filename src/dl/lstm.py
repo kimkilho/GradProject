@@ -66,7 +66,7 @@ class LSTM(object):
         """
 
         # Set GPU options
-        # self.gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+        self.gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
 
         assert len(input_layer_size) == 3
 
@@ -289,6 +289,7 @@ class LSTM(object):
         trained_model_save_dir = self.train_ckpt_dir
 
         with tf.Session() as s:
+        # with tf.Session(config=tf.ConfigProto(gpu_options=self.gpu_options)) as s:
             start_time = time.time()
             # Create a saver.
             print [var.name for var in tf.trainable_variables()]
@@ -377,6 +378,7 @@ class LSTM(object):
         trained_model_save_dir = self.train_ckpt_dir
 
         with tf.Session() as s:
+        # with tf.Session(config=tf.ConfigProto(gpu_options=self.gpu_options)) as s:
             tf.initialize_all_variables().run()
 
             # Create a saver.
