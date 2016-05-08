@@ -7,6 +7,8 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 from sklearn import metrics
 
+from util.preprocess_data import SEP_CHAR, LINE_BREAK_CHAR
+
 
 def error_rate(predictions, labels):
     """
@@ -239,7 +241,8 @@ class LSTM(object):
               batch_size, num_epochs,
               learning_rate_decay_factor, patience,
               train_data, train_labels,
-              valid_data, valid_labels):
+              valid_data, valid_labels,
+              visualize_path=None):
         num_timesteps = self.input_layer_size[0]
         num_features = self.input_layer_size[1]
         input_num_channels = self.input_layer_size[2]
@@ -310,6 +313,12 @@ class LSTM(object):
             tf.initialize_all_variables().run()
             print("Variables initialized!")
 
+            # FIXME: Records data for visualization
+            if visualize_path:
+                learning_curve_data_path = \
+                    os.path.join(visualize_path, "learning_curve.csv")
+                wf = open(learning_curve_data_path, 'w')
+
             # Loop through training steps.
             for step in xrange(num_epochs * train_size // batch_size):
                 # Compute the offset of the current minibatch in the data.
@@ -330,13 +339,37 @@ class LSTM(object):
                 curr_epoch_in_float = float(step) * batch_size / train_size
 
                 if step % 100 == 0:
+                    this_train_error = error_rate(predictions, batch_labels)
                     print("@ Epoch %.2f" % curr_epoch_in_float)
                     print("Minibatch loss: %.3f, learning_rate: %.6f" % (l, lr))
-                    print("Minibatch error: %.1f%%" %
-                          error_rate(predictions, batch_labels))
+                    print("Minibatch error: %.1f%%" % this_train_error)
                     sys.stdout.flush()
 
-                if step % valid_frequency == 0:
+                    if visualize_path:
+                        this_valid_error = \
+                            error_rate(valid_prediction.eval(), valid_labels)
+                        print("    Validation error: %.1f%%" % this_valid_error)
+
+                        wf.write("%.2f,%.2f,%.2f\n" %
+                                 (curr_epoch_in_float,
+                                  this_train_error,
+                                  this_valid_error))
+                        wf.flush()
+
+                        # If we got the best validation score until now
+                        if this_valid_error < best_valid_error:
+                            # Save the best validation score and step number
+                            best_valid_error = this_valid_error
+                            best_step = step
+
+                            # Save the model checkout periodically.
+                            checkpoint_path = os.path.join(trained_model_save_dir,
+                                                           "model.ckpt")
+                            saver.save(s, checkpoint_path, global_step=step)
+
+                    sys.stdout.flush()
+
+                if (not visualize_path) and step % valid_frequency == 0:
                     this_valid_error = \
                         error_rate(valid_prediction.eval(), valid_labels)
                     print("    Validation error: %.1f%%" % this_valid_error)
@@ -357,6 +390,9 @@ class LSTM(object):
                 # Break loop early when the learning rate gets low enough
                 if lr < 1e-7:
                     break
+
+            if visualize_path:
+                wf.close()
 
             duration = time.time() - start_time
             print("Optimization complete.")

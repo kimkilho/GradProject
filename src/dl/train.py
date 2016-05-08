@@ -81,6 +81,8 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "..", "..", "data")
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          "..", "..", "model")
+VISUALIZATION_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "..", "..", "visualization")
 
 # Basic parameters
 NUM_CLASSES = 2
@@ -231,6 +233,25 @@ def main(argv=None):
         os.makedirs(TRAIN_CKPT_DIR)
     print("TRAIN_CKPT_DIR", TRAIN_CKPT_DIR)
 
+    VIS_MODEL_DIR = \
+        os.path.join(VISUALIZATION_DIR,
+                     "learningcurve_%s_NT%d_NF%d_INC%d_"
+                     "C1FH%d_C1NC%d_C2FH%d_C2NC%d_C3FH%d_C3NC%d_"
+                     "NH%d_FB%.2f_"
+                     "LR%.4f_DP_%.1f_%s" %
+                     (TAG,
+                      NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS,
+                      CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS,
+                      CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS,
+                      CONV3_FILTER_HEIGHT, CONV3_NUM_CHANNELS,
+                      NUM_HIDDENS, FORGET_BIAS,
+                      LEARNING_RATE,
+                      DROPOUT_PROB,
+                      LABEL_NAME))
+    if not os.path.exists(VIS_MODEL_DIR):
+        os.makedirs(VIS_MODEL_DIR)
+    print("VIS_MODEL_DIR", VIS_MODEL_DIR)
+
     # Get the data.
     train_data, train_profile_ids, train_labels = \
         extract_data(TRAIN_DATA_PATH, NUM_FEATURES, NUM_CLASSES,
@@ -262,7 +283,8 @@ def main(argv=None):
                 BATCH_SIZE, NUM_EPOCHS,
                 LEARNING_RATE_DECAY_FACTOR, PATIENCE,
                 train_data, train_labels,
-                valid_data, valid_labels)
+                valid_data, valid_labels,
+                visualize_path=VIS_MODEL_DIR)
 
 
 if __name__ == "__main__":
