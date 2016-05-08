@@ -136,6 +136,7 @@ ENV/
 data/
 model/
 model_bl/
+visualization/
 
 # Shell program related files
 *.sh
