@@ -6,7 +6,7 @@ import argparse
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "..", "..", "data")
-DATA_DIR = os.path.join(BASE_DIR, "AMGOLPAR", "fillna")     # FIXME
+DATA_DIR = os.path.join(BASE_DIR, "20160507")    # FIXME
 VALID_TAGS = "AMGOLPaR"
 VALID_LABELS = {"accompanying", "conversing"}
 VALID_NORMALIZE_OPTIONS = {"each", "all"}
@@ -23,28 +23,31 @@ TEST_SET_RATIO = 2
 LIMIT_TEST_NUM_INSTANCES = 10000
 
 """ Original data file indices """
-# [profile_id[0], timestamp[1], expId[2], accX[3], accY[4], accZ[5],
-#  magnX[6], magnY[7], magnZ[8], gyroX[9], gyroY[10], gyroZ[11],
-#  roll[12], pitch[13], azimuth[14], lux[15], distance[16],
-#  l1Norm[17], l2Norm[18], linfNorm[19],
-#  mfcc1[20], mfcc2[21], mfcc3[22], mfcc4[23],
-#  mfcc5[24], mfcc6[25], mfcc7[26], mfcc8[27],
-#  mfcc9[28], mfcc10[29], mfcc11[30], mfcc12[31],
-#  psd1[32], psd2[33], psd3[34], psd4[35],
-#  cosThetaOver2[36], xSinThetaOver2[37], ySinThetaOver2[38], zSinThetaOver2[39],
-#  accompanying[40], conversing[41], drinking[42], having_a_meal[43],
-#  in_class[44], sleeping[45]]
+# [profile_id[0], timestamp[1], expId[2], sensorId[3], 
+#  accX[4], accY[5], accZ[6],
+#  magnX[7], magnY[8], magnZ[9], 
+#  gyroX[10], gyroY[11], gyroZ[12],
+#  roll[13], pitch[14], azimuth[15], 
+#  lux[16], distance[17],
+#  l1Norm[18], l2Norm[19], linfNorm[20],
+#  mfcc1[21], mfcc2[22], mfcc3[23], mfcc4[24],
+#  mfcc5[25], mfcc6[26], mfcc7[27], mfcc8[28],
+#  mfcc9[29], mfcc10[30], mfcc11[31], mfcc12[32],
+#  psd1[33], psd2[34], psd3[35], psd4[36],
+#  cosThetaOver2[37], xSinThetaOver2[38], ySinThetaOver2[39], zSinThetaOver2[40],
+#  accompanying[41], conversing[42], drinking[43], having_a_meal[44],
+#  in_class[45], sleeping[46], studying[47]]
 PROFILE_ID_IDX = 0
 TIMESTAMP_IDX = 1
 FEATURE_IDXS_DICT = {
-    "A": (3, 6),
-    "M": (6, 9),
-    "G": (9, 12),
-    "O": (12, 15),
-    "L": (15, 16),
-    "P": (16, 17),
-    "a": (17, 36),
-    "R": (36, 40)
+    "A": (4, 7),
+    "M": (7, 10),
+    "G": (10, 13),
+    "O": (13, 16),
+    "L": (16, 17),
+    "P": (17, 18),
+    "a": (18, 37),
+    "R": (37, 41)
 }    # (inclusive, exclusive)
 FEATURE_NAMES_DICT = {
     "A": ("accX", "accY", "accZ",),
@@ -61,7 +64,7 @@ FEATURE_NAMES_DICT = {
     "R": ("cosThetaOver2", "xSinThetaOver2",
           "ySinThetaOver2", "zSinThetaOver2",)
 }
-LABEL_IDXS_DICT = {"accompanying": 40, "conversing": 41}
+LABEL_IDXS_DICT = {"accompanying": 41, "conversing": 42}
 
 
 def parse_args():
@@ -81,7 +84,7 @@ def parse_args():
                              "(A combination of letters in FILTER_TAG)")
     parser.add_argument("--label_name", dest="label_name",
                         help="The name of label to be classified "
-                             "('sleeping' or 'having_a_meal')")
+                             "('accompanying' or 'conversing')")
     parser.add_argument("--input_dim", dest="input_dim",
                         help="The input dimension of data to be generated "
                              "(default: 64)")
@@ -102,7 +105,7 @@ def parse_args():
         label_name = args.label_name
     else:
         raise argparse.ArgumentTypeError("LABEL_TYPE should be one of the follows: "
-                                         "sleeping, having_a_meal")
+                                         "accompanying, conversing")
 
     if args.input_dim:
       input_dim = int(args.input_dim)
@@ -668,7 +671,7 @@ if __name__ == "__main__":
     SHUFFLE = True  # FIXME
     RANDOM_SEQUENCE_FILE_PATH = \
         os.path.join(BASE_DIR, "random_sequence_%s_%s.csv" %
-                               (TAG, "20160323"))  # FIXME
+                               (TAG, "20160507"))  # FIXME
 
     """ Filtering and normalizing of instances with missing values """
     FILTERED_DATA_DIR = os.path.join(DATA_DIR, "filtered_%s" % FILTER_TAG)
