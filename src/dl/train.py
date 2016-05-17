@@ -285,6 +285,8 @@ def main(argv=None):
                         valid_data_wo_pid, valid_labels_wo_pid)
 
     else:
+        valid_size = int(train_labels.shape[0] * VALIDATION_DATA_RATIO)
+        valid_data = train_data[:valid_size, :, :, :]
         valid_labels = train_labels[:valid_size]
         train_data = train_data[valid_size:, :, :, :]
         train_labels = train_labels[valid_size:]
