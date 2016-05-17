@@ -39,7 +39,8 @@ class LSTM(object):
                  forget_bias,
                  dropout_prob,
                  stddev, seed,
-                 train_ckpt_dir):
+                 train_ckpt_dir,
+                 profile_id=0):
         """
         :param tag: String
         :param num_classes: int
@@ -62,6 +63,7 @@ class LSTM(object):
         :param stddev: float
         :param seed: int (or None)
         :param train_ckpt_dir: String
+        :param profile_id: int
         :return: void
         """
 
@@ -83,6 +85,7 @@ class LSTM(object):
         self.stddev = stddev
         self.seed = seed
         self.train_ckpt_dir = train_ckpt_dir
+        self.profile_id = profile_id
 
         self.initialize()
 
@@ -98,11 +101,11 @@ class LSTM(object):
             weight = tf.Variable(
                 tf.random_normal(conv_filter_size,
                                  stddev=self.stddev, seed=self.seed),
-                name="%s_weight" % conv_layer_name
+                name="%s_weight_%d" % (conv_layer_name, self.profile_id)
             )
             bias = tf.Variable(
                 tf.zeros([conv_filter_size[3]]),
-                name="%s_bias" % conv_layer_name
+                name="%s_bias_%d" % (conv_layer_name, self.profile_id)
             )
             self.conv_layers_dict[conv_layer_name] = [weight, bias]
 
@@ -124,11 +127,11 @@ class LSTM(object):
             weight = tf.Variable(
                 tf.random_normal([self.num_hiddens, self.num_classes],
                                  stddev=self.stddev, seed=self.seed),
-                name="%s_weight" % dense_layer_name
+                name="%s_weight_%d" % (dense_layer_name, self.profile_id)
             )
             bias = tf.Variable(
                 tf.zeros([self.num_classes]),
-                name="%s_bias" % dense_layer_name
+                name="%s_bias_%d" % (dense_layer_name, self.profile_id)
             )
             self.dense_layers_dict[dense_layer_name] = [weight, bias]
 
@@ -194,7 +197,7 @@ class LSTM(object):
 
         dense1_outputs = []
         state = dense1_stacked_lstm.zero_state(curr_num_instances, tf.float32)
-        with tf.variable_scope("Dense1"):
+        with tf.variable_scope("Dense1_%d" % self.profile_id):
             for timestep in range(curr_num_timesteps):
                 if timestep > 0: tf.get_variable_scope().reuse_variables()
                 # The value of state is updated after processing each batch
@@ -211,7 +214,7 @@ class LSTM(object):
 
         dense2_outputs = []
         state = dense2_stacked_lstm.zero_state(curr_num_instances, tf.float32)
-        with tf.variable_scope("Dense2"):
+        with tf.variable_scope("Dense2_%d" % self.profile_id):
             for timestep in range(curr_num_timesteps):
                 if timestep > 0: tf.get_variable_scope().reuse_variables()
                 # The value of state is updated after processing each batch
@@ -240,6 +243,7 @@ class LSTM(object):
               learning_rate_decay_factor, patience,
               train_data, train_labels,
               valid_data, valid_labels):
+        # if self.profile_id == 0, then it is non-leave-one-person-out training
         num_timesteps = self.input_layer_size[0]
         num_features = self.input_layer_size[1]
         input_num_channels = self.input_layer_size[2]
@@ -286,13 +290,17 @@ class LSTM(object):
         best_valid_error = np.inf
         best_step = 0
 
-        trained_model_save_dir = self.train_ckpt_dir
+        # Create a new directory for model of current profile_id
+        trained_model_save_dir = os.path.join(self.train_ckpt_dir, 
+                                              "profile_id_%d" % self.profile_id)
+        if not os.path.exists(trained_model_save_dir):
+            os.makedirs(trained_model_save_dir)
+        # trained_model_save_dir = self.train_ckpt_dir
 
         with tf.Session() as s:
         # with tf.Session(config=tf.ConfigProto(gpu_options=self.gpu_options)) as s:
             start_time = time.time()
             # Create a saver.
-            print [var.name for var in tf.trainable_variables()]
             variables_to_be_saved_list = tf.trainable_variables()
             # variables_to_be_saved_list = []
             # for layer_name in self.conv_layers_dict:
@@ -330,7 +338,8 @@ class LSTM(object):
                 curr_epoch_in_float = float(step) * batch_size / train_size
 
                 if step % 100 == 0:
-                    print("@ Epoch %.2f" % curr_epoch_in_float)
+                    print("Profile id %d @ Epoch %.2f" % 
+                          (self.profile_id, curr_epoch_in_float))
                     print("Minibatch loss: %.3f, learning_rate: %.6f" % (l, lr))
                     print("Minibatch error: %.1f%%" %
                           error_rate(predictions, batch_labels))
@@ -349,7 +358,8 @@ class LSTM(object):
 
                         # Save the model checkout periodically.
                         checkpoint_path = os.path.join(trained_model_save_dir,
-                                                       "model.ckpt")
+                                                       "model_%d.ckpt" % 
+                                                       self.profile_id)
                         saver.save(s, checkpoint_path, global_step=step)
 
                     sys.stdout.flush()
@@ -367,6 +377,7 @@ class LSTM(object):
         ops.reset_default_graph()   # NOTE: reset existing graph
 
     def test(self, test_data, test_labels):
+        # if self.profile_id == 0, then it is non-leave-one-person-out testing
 
         test_size = test_labels.shape[0]
         test_data_node = tf.constant(test_data)
@@ -375,7 +386,9 @@ class LSTM(object):
             test_logits, _, _ = self.model(test_data_node)
             test_prediction = tf.nn.softmax(test_logits)
 
-        trained_model_save_dir = self.train_ckpt_dir
+        trained_model_save_dir = os.path.join(self.train_ckpt_dir, 
+                                              "profile_id_%d" % self.profile_id)
+        # trained_model_save_dir = self.train_ckpt_dir
 
         with tf.Session() as s:
         # with tf.Session(config=tf.ConfigProto(gpu_options=self.gpu_options)) as s:

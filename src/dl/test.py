@@ -1,5 +1,6 @@
 import tensorflow as tf
 import os
+import numpy as np
 
 from lstm import LSTM
 from util.preprocess_data import FEATURE_IDXS_DICT
@@ -14,7 +15,8 @@ MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 
 def main(argv=None):
-    TAG, LABEL_NAME, NUM_EPOCHS, BATCH_SIZE, \
+    TAG, LABEL_NAME, LEAVE_ONE_PERSON_OUT, \
+    NUM_EPOCHS, BATCH_SIZE, \
     NUM_TIMESTEPS, INPUT_NUM_CHANNELS, \
     CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS, \
     CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS, \
@@ -36,8 +38,10 @@ def main(argv=None):
         else:
             NUM_FEATURES += FEATURE_IDXS[i]
 
-    print "TAG, LABEL_NAME, NUM_EPOCHS, BATCH_SIZE"
-    print TAG, LABEL_NAME, NUM_EPOCHS, BATCH_SIZE
+    print "TAG, LABEL_NAME, LEAVE_ONE_PERSON_OUT"
+    print TAG, LABEL_NAME, LEAVE_ONE_PERSON_OUT
+    print "NUM_EPOCHS, BATCH_SIZE"
+    print NUM_EPOCHS, BATCH_SIZE
     print "NUM_TIMESTEPS, NUM_FEATURES (input_height, input_width), INPUT_NUM_CHANNELS"
     print NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS
     print "CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS"
@@ -60,7 +64,7 @@ def main(argv=None):
                      "train_%s_NT%d_NF%d_INC%d_"
                      "C1FH%d_C1NC%d_C2FH%d_C2NC%d_C3FH%d_C3NC%d_"
                      "NH%d_FB%.2f_"
-                     "LR%.4f_DP_%.1f_%s" %
+                     "LR%.4f_DP_%.1f_%s_%s" %
                      (TAG,
                       NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS,
                       CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS,
@@ -69,6 +73,7 @@ def main(argv=None):
                       NUM_HIDDENS, FORGET_BIAS,
                       LEARNING_RATE,
                       DROPOUT_PROB,
+                      "LOPO" if LEAVE_ONE_PERSON_OUT else "WHOLE",
                       LABEL_NAME))
     print("TRAIN_CKPT_DIR", TRAIN_CKPT_DIR)
 
@@ -79,21 +84,47 @@ def main(argv=None):
     # test_data: A 4D tensor [num_instances, num_timesteps(image_height),
     #                         num_features(image_width), input_num_channels]
 
-    print("Testing the model...")
-    lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
-                  [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
-                  [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
-                   INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
-                  [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
-                   CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
-                  [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
-                   CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
-                  NUM_HIDDENS,
-                  FORGET_BIAS,
-                  DROPOUT_PROB,
-                  STDDEV, SEED,
-                  TRAIN_CKPT_DIR)
-    lstm.test(test_data, test_labels)
+    if LEAVE_ONE_PERSON_OUT:
+        unique_profile_ids = np.unique(test_profile_ids)
+
+        for profile_id in unique_profile_ids:
+            test_data_only_pid = test_data[test_profile_ids == profile_id]
+            test_labels_only_pid = test_labels[test_profile_ids == profile_id]
+
+            print("Testing the model as a leave-one-person-out: profile_id=%d" 
+                  % profile_id)
+            lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
+                          [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
+                          [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
+                           INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
+                          [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
+                           CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
+                          [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
+                           CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
+                          NUM_HIDDENS,
+                          FORGET_BIAS,
+                          DROPOUT_PROB,
+                          STDDEV, SEED,
+                          TRAIN_CKPT_DIR,
+                          profile_id=profile_id)
+            lstm.test(test_data_only_pid, test_labels_only_pid)
+
+    else:
+        print("Testing the model for the whole data set...")
+        lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
+                      [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
+                      [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
+                       INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
+                      [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
+                       CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
+                      [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
+                       CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
+                      NUM_HIDDENS,
+                      FORGET_BIAS,
+                      DROPOUT_PROB,
+                      STDDEV, SEED,
+                      TRAIN_CKPT_DIR)
+        lstm.test(test_data, test_labels)
 
 
 if __name__ == "__main__":

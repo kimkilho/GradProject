@@ -15,6 +15,11 @@ tf.app.flags.DEFINE_string(
     "label_name", "accompanying",
     "The name of label to be classified "
     "('accompanying' or 'conversing', default: accompanying).")
+tf.app.flags.DEFINE_boolean(
+    "lopo", False,
+    "Flag indicating whether to do LOPO or not "
+    "(True or False, default: False)")
+
 tf.app.flags.DEFINE_integer(
     "num_epochs", 300,
     "The number of epochs "
@@ -99,6 +104,8 @@ LEARNING_RATE_DECAY_FACTOR = 0.99
 def parse_args(flags):
     tag = flags.tag
     label_name = flags.label_name
+    leave_one_person_out = flags.lopo
+
     num_epochs = flags.num_epochs
     batch_size = flags.batch_size
 
@@ -118,7 +125,8 @@ def parse_args(flags):
     learning_rate = flags.learning_rate
     dropout_prob = flags.dropout_prob
 
-    return tag, label_name, num_epochs, batch_size, \
+    return tag, label_name, leave_one_person_out, \
+           num_epochs, batch_size, \
            num_timesteps, input_num_channels, \
            conv1_filter_height, conv1_num_channels, \
            conv2_filter_height, conv2_num_channels, \
@@ -170,7 +178,8 @@ def extract_data(filename, num_features, num_classes,
 
 
 def main(argv=None):
-    TAG, LABEL_NAME, NUM_EPOCHS, BATCH_SIZE, \
+    TAG, LABEL_NAME, LEAVE_ONE_PERSON_OUT, \
+    NUM_EPOCHS, BATCH_SIZE, \
     NUM_TIMESTEPS, INPUT_NUM_CHANNELS, \
     CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS, \
     CONV2_FILTER_HEIGHT, CONV2_NUM_CHANNELS, \
@@ -192,8 +201,10 @@ def main(argv=None):
         else:
             NUM_FEATURES += FEATURE_IDXS[i]
 
-    print "TAG, LABEL_NAME, NUM_EPOCHS, BATCH_SIZE"
-    print TAG, LABEL_NAME, NUM_EPOCHS, BATCH_SIZE
+    print "TAG, LABEL_NAME, LEAVE_ONE_PERSON_OUT"
+    print TAG, LABEL_NAME, LEAVE_ONE_PERSON_OUT
+    print "NUM_EPOCHS, BATCH_SIZE"
+    print NUM_EPOCHS, BATCH_SIZE
     print "NUM_TIMESTEPS, NUM_FEATURES (input_height, input_width), INPUT_NUM_CHANNELS"
     print NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS
     print "CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS"
@@ -217,7 +228,7 @@ def main(argv=None):
                      "train_%s_NT%d_NF%d_INC%d_"
                      "C1FH%d_C1NC%d_C2FH%d_C2NC%d_C3FH%d_C3NC%d_"
                      "NH%d_FB%.2f_"
-                     "LR%.4f_DP_%.1f_%s" %
+                     "LR%.4f_DP_%.1f_%s_%s" %
                      (TAG,
                       NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS,
                       CONV1_FILTER_HEIGHT, CONV1_NUM_CHANNELS,
@@ -226,6 +237,7 @@ def main(argv=None):
                       NUM_HIDDENS, FORGET_BIAS,
                       LEARNING_RATE,
                       DROPOUT_PROB,
+                      "LOPO" if LEAVE_ONE_PERSON_OUT else "WHOLE",
                       LABEL_NAME))
     if not os.path.exists(TRAIN_CKPT_DIR):
         os.makedirs(TRAIN_CKPT_DIR)
@@ -238,31 +250,64 @@ def main(argv=None):
     # train_data: A 4D tensor [num_instances, num_timesteps(image_height),
     #                          num_features(image_width), input_num_channels]
 
-    valid_size = int(train_labels.shape[0] * VALIDATION_DATA_RATIO)
-    valid_data = train_data[:valid_size, :, :, :]
-    valid_labels = train_labels[:valid_size]
-    train_data = train_data[valid_size:, :, :, :]
-    train_labels = train_labels[valid_size:]
+    if LEAVE_ONE_PERSON_OUT:
+        unique_profile_ids = np.unique(train_profile_ids)
 
-    print("Training...")
-    lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
-                  [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
-                  [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
-                   INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
-                  [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
-                   CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
-                  [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
-                   CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
-                  NUM_HIDDENS,
-                  FORGET_BIAS,
-                  DROPOUT_PROB,
-                  STDDEV, SEED,
-                  TRAIN_CKPT_DIR)
-    lstm.train(LEARNING_RATE,
-                BATCH_SIZE, NUM_EPOCHS,
-                LEARNING_RATE_DECAY_FACTOR, PATIENCE,
-                train_data, train_labels,
-                valid_data, valid_labels)
+        for profile_id in unique_profile_ids:
+            train_data_wo_pid = train_data[train_profile_ids != profile_id]
+            train_labels_wo_pid = train_labels[train_profile_ids != profile_id]
+
+            valid_size = int(train_labels_wo_pid.shape[0] * VALIDATION_DATA_RATIO)
+            valid_data_wo_pid = train_data_wo_pid[:valid_size, :, :, :]
+            valid_labels_wo_pid = train_labels_wo_pid[:valid_size]
+            train_data_wo_pid = train_data_wo_pid[valid_size:, :, :, :]
+            train_labels_wo_pid = train_labels_wo_pid[valid_size:]
+
+            print("Training as a leave-one-person-out: profile_id=%d" % profile_id)
+            lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
+                          [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
+                          [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
+                           INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
+                          [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
+                           CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
+                          [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
+                           CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
+                          NUM_HIDDENS,
+                          FORGET_BIAS,
+                          DROPOUT_PROB,
+                          STDDEV, SEED,
+                          TRAIN_CKPT_DIR,
+                          profile_id=profile_id)
+            lstm.train(LEARNING_RATE,
+                        BATCH_SIZE, NUM_EPOCHS,
+                        LEARNING_RATE_DECAY_FACTOR, PATIENCE,
+                        train_data_wo_pid, train_labels_wo_pid,
+                        valid_data_wo_pid, valid_labels_wo_pid)
+
+    else:
+        valid_labels = train_labels[:valid_size]
+        train_data = train_data[valid_size:, :, :, :]
+        train_labels = train_labels[valid_size:]
+
+        print("Training for the whole data set...")
+        lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
+                      [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
+                      [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
+                       INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
+                      [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
+                       CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
+                      [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
+                       CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
+                      NUM_HIDDENS,
+                      FORGET_BIAS,
+                      DROPOUT_PROB,
+                      STDDEV, SEED,
+                      TRAIN_CKPT_DIR)
+        lstm.train(LEARNING_RATE,
+                    BATCH_SIZE, NUM_EPOCHS,
+                    LEARNING_RATE_DECAY_FACTOR, PATIENCE,
+                    train_data, train_labels,
+                    valid_data, valid_labels)
 
 
 if __name__ == "__main__":
