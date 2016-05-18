@@ -111,20 +111,21 @@ def main(argv=None):
 
     else:
         print("Testing the model for the whole data set...")
-        lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
-                      [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
-                      [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
-                       INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
-                      [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
-                       CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
-                      [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
-                       CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
-                      NUM_HIDDENS,
-                      FORGET_BIAS,
-                      DROPOUT_PROB,
-                      STDDEV, SEED,
-                      TRAIN_CKPT_DIR)
-        lstm.test(test_data, test_labels)
+        with tf.device("/gpu:1"):
+            lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
+                          [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
+                          [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
+                           INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
+                          [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
+                           CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
+                          [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
+                           CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
+                          NUM_HIDDENS,
+                          FORGET_BIAS,
+                          DROPOUT_PROB,
+                          STDDEV, SEED,
+                          TRAIN_CKPT_DIR)
+            lstm.test(test_data, test_labels)
 
 
 if __name__ == "__main__":

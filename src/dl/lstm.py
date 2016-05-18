@@ -297,7 +297,8 @@ class LSTM(object):
             os.makedirs(trained_model_save_dir)
         # trained_model_save_dir = self.train_ckpt_dir
 
-        with tf.Session() as s:
+        # with tf.Session() as s:
+        with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as s:
         # with tf.Session(config=tf.ConfigProto(gpu_options=self.gpu_options)) as s:
             start_time = time.time()
             # Create a saver.
@@ -390,7 +391,8 @@ class LSTM(object):
                                               "profile_id_%d" % self.profile_id)
         # trained_model_save_dir = self.train_ckpt_dir
 
-        with tf.Session() as s:
+        # with tf.Session() as s:
+        with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as s:
         # with tf.Session(config=tf.ConfigProto(gpu_options=self.gpu_options)) as s:
             tf.initialize_all_variables().run()
 

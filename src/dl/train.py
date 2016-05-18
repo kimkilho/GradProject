@@ -292,24 +292,25 @@ def main(argv=None):
         train_labels = train_labels[valid_size:]
 
         print("Training for the whole data set...")
-        lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
-                      [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
-                      [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
-                       INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
-                      [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
-                       CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
-                      [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
-                       CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
-                      NUM_HIDDENS,
-                      FORGET_BIAS,
-                      DROPOUT_PROB,
-                      STDDEV, SEED,
-                      TRAIN_CKPT_DIR)
-        lstm.train(LEARNING_RATE,
-                    BATCH_SIZE, NUM_EPOCHS,
-                    LEARNING_RATE_DECAY_FACTOR, PATIENCE,
-                    train_data, train_labels,
-                    valid_data, valid_labels)
+        with tf.device("/gpu:1"):
+            lstm = LSTM(TAG, NUM_CLASSES, LABEL_NAME,
+                          [NUM_TIMESTEPS, NUM_FEATURES, INPUT_NUM_CHANNELS],
+                          [CONV1_FILTER_HEIGHT, CONV1_FILTER_WIDTH,
+                           INPUT_NUM_CHANNELS, CONV1_NUM_CHANNELS],
+                          [CONV2_FILTER_HEIGHT, CONV2_FILTER_WIDTH,
+                           CONV1_NUM_CHANNELS, CONV2_NUM_CHANNELS],
+                          [CONV3_FILTER_HEIGHT, CONV3_FILTER_WIDTH,
+                           CONV2_NUM_CHANNELS, CONV3_NUM_CHANNELS],
+                          NUM_HIDDENS,
+                          FORGET_BIAS,
+                          DROPOUT_PROB,
+                          STDDEV, SEED,
+                          TRAIN_CKPT_DIR)
+            lstm.train(LEARNING_RATE,
+                        BATCH_SIZE, NUM_EPOCHS,
+                        LEARNING_RATE_DECAY_FACTOR, PATIENCE,
+                        train_data, train_labels,
+                        valid_data, valid_labels)
 
 
 if __name__ == "__main__":
